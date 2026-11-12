@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="module" version="3.1" client="administrator" method="upgrade">
+	<name>mod_accessibility</name>
+	<author>JoomShaper</author>
+	<creationDate>Mar 2026</creationDate>
+	<copyright>Copyright (C) 2010 - 2026 JoomShaper. All rights reserved.</copyright>
+	<license>http://www.gnu.org/licenses/gpl-2.0.html GPLv2 or later</license>
+	<authorEmail>support@joomshaper.com</authorEmail>
+	<version>1.0.0</version>
+	<description>MOD_ACCESSIBILITY_XML_DESCRIPTION</description>
+	<files>
+		<filename module="mod_accessibility">mod_accessibility.php</filename>
+		<folder>tmpl</folder>
+		<folder>language</folder>
+	</files>
+	<media destination="mod_accessibility" folder="media">
+		<folder>css</folder>
+		<folder>images</folder>
+		<folder>js</folder>
+	</media>
+	<languages>
+		<language tag="en-GB">language/en-GB/mod_accessibility.ini</language>
+		<language tag="en-GB">language/en-GB/mod_accessibility.sys.ini</language>
+	</languages>
+	<help key="JHELP_EXTENSIONS_MODULE_MANAGER_ADMIN_ACCESSIBILITY" />
+	<config>
+		<fields name="params">
+			<fieldset name="advanced">
+				<field
+					name="layout"
+					type="modulelayout"
+					label="JFIELD_ALT_LAYOUT_LABEL"
+					class="custom-select"
+ 				/>
+
+				<field
+					name="moduleclass_sfx"
+					type="textarea"
+					label="COM_MODULES_FIELD_MODULECLASS_SFX_LABEL"
+					rows="3"
+				/>
+			</fieldset>
+		</fields>
+	</config>
+</extension>

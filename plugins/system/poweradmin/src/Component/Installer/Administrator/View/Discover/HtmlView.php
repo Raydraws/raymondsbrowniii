@@ -1,0 +1,113 @@
+<?php
+/**
+ * @package     Poweradmin
+ * @subpackage  com_installer
+ *
+ * @copyright   Copyright (C) 2010 - 2026 JoomShaper. All rights reserved.
+ * @license     http://www.gnu.org/licenses/gpl-2.0.html GPLv2 or later
+ */
+
+namespace Joomla\Component\Installer\Administrator\View\Discover;
+
+defined('_JEXEC') or die;
+
+use Joomla\CMS\Factory;
+use Joomla\CMS\MVC\View\GenericDataException;
+use Joomla\CMS\Toolbar\ToolbarHelper;
+use Joomla\Component\Installer\Administrator\View\Installer\HtmlView as InstallerViewDefault;
+
+/**
+ * Extension Manager Discover View
+ *
+ * @since  1.6
+ */
+class HtmlView extends InstallerViewDefault
+{
+	/**
+	 * Constructor
+	 *
+	 * @param   array  $config  An optional associative array of configuration settings.
+	 *
+	 * @since   1.6
+	 */
+	public function __construct($config = [])
+	{
+		$toolbarAutoload = JPATH_ADMINISTRATOR . '/templates/poweradmin/html/PoweradminToolbar/autoload.php';
+		if (is_file($toolbarAutoload)) {
+			require_once $toolbarAutoload;
+		}
+		parent::__construct($config);
+	}
+
+	/**
+	 * Display the view.
+	 *
+	 * @param   string  $tpl  Template
+	 *
+	 * @return  void
+	 *
+	 * @since   1.6
+	 */
+	public function display($tpl = null)
+	{
+		// Run discover from the model.
+		if (!$this->checkExtensions())
+		{
+			$this->getModel('discover')->discover();
+		}
+
+		// Get data from the model.
+		$this->items         = $this->get('Items');
+		$this->pagination    = $this->get('Pagination');
+		$this->filterForm    = $this->get('FilterForm');
+		$this->activeFilters = $this->get('ActiveFilters');
+
+		// Check for errors.
+		if (count($errors = $this->get('Errors')))
+		{
+			throw new GenericDataException(implode("\n", $errors), 500);
+		}
+
+		parent::display($tpl);
+	}
+
+	/**
+	 * Add the page title and toolbar.
+	 *
+	 * @return  void
+	 *
+	 * @since   3.1
+	 */
+	protected function addToolbar()
+	{
+		/*
+		 * Set toolbar items for the page.
+		 */
+		ToolbarHelper::custom('discover.refresh', 'refresh', 'refresh', 'COM_INSTALLER_TOOLBAR_DISCOVER', false);
+		ToolbarHelper::help('JHELP_EXTENSIONS_EXTENSION_MANAGER_DISCOVER');
+		parent::addToolbar();
+		ToolbarHelper::custom('discover.install', 'upload', 'upload', 'JTOOLBAR_INSTALL', true);
+	}
+
+	/**
+	 * Check extensions.
+	 *
+	 * Checks uninstalled extensions in extensions table.
+	 *
+	 * @return  boolean  True if there are discovered extensions on the database.
+	 *
+	 * @since   3.5
+	 */
+	public function checkExtensions()
+	{
+		$db = Factory::getDbo();
+		$query = $db->getQuery(true)
+			->select('*')
+			->from($db->quoteName('#__extensions'))
+			->where($db->quoteName('state') . ' = -1');
+		$db->setQuery($query);
+		$discoveredExtensions = $db->loadObjectList();
+
+		return (count($discoveredExtensions) === 0) ? false : true;
+	}
+}

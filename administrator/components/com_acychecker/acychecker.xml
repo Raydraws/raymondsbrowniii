@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="component" version="2.5" method="upgrade">
+	<name>AcyChecker</name>
+	<creationDate>June 2021</creationDate>
+	<author>Acyba</author>
+	<authorEmail>dev@acyba.com</authorEmail>
+	<authorUrl>https://www.acychecker.com</authorUrl>
+	<copyright>Copyright (C) 2021-2026 ACYBA SAS - All rights reserved.</copyright>
+	<license>GNU/GPLv3 https://www.gnu.org/licenses/gpl-3.0.html</license>
+	<version>1.8.0</version>
+	<description>Check your email addresses validity</description>
+	<languages folder="languages">
+		<language tag="en-GB">en-GB.com_acychecker.ini</language>
+		<language tag="en-US">en-US.com_acychecker.ini</language>
+		<language tag="fr-BE">fr-BE.com_acychecker.ini</language>
+		<language tag="fr-CA">fr-CA.com_acychecker.ini</language>
+		<language tag="fr-FR">fr-FR.com_acychecker.ini</language>
+	</languages>
+	<install>
+		<sql>
+			<file charset="utf8" driver="mysql">tables.sql</file>
+		</sql>
+	</install>
+	<files folder="front">
+		<filename>acychecker.php</filename>
+		<filename>index.html</filename>
+	</files>
+	<scriptfile>install.joomla.php</scriptfile>
+	<media folder="assets" destination="com_acychecker">
+		<folder>css</folder>
+		<folder>images</folder>
+		<folder>js</folder>
+		<filename>index.html</filename>
+	</media>
+	<administration>
+		<files folder="admin">
+			<folder>src</folder>
+			<folder>cms</folder>
+			<folder>vendor</folder>
+			<filename>index.html</filename>
+			<filename>acychecker.php</filename>
+			<filename>tables.sql</filename>
+			<filename>defines.php</filename>
+			<filename>defines_cms.php</filename>
+		</files>
+
+		<menu img="../media/com_acychecker/images/icons/logo_envelope.svg" link="option=com_acychecker">COM_ACYCHECKER</menu>
+		<submenu>
+			<menu link="option=com_acychecker&amp;ctrl=dashboard">ACYC_DASHBOARD</menu>
+			<menu link="option=com_acychecker&amp;ctrl=database">ACYC_CLEAN_DATABASE</menu>
+			<menu link="option=com_acychecker&amp;ctrl=registration">ACYC_BLOCK_ON_REGISTRATION</menu>
+			<menu link="option=com_acychecker&amp;ctrl=tests">ACYC_TESTS</menu>
+			<menu link="option=com_acychecker&amp;ctrl=singletest">ACYC_SINGLE_TEST</menu>
+			<menu link="option=com_acychecker&amp;ctrl=configuration">ACYC_CONFIGURATION</menu>
+		</submenu>
+	</administration>
+</extension>

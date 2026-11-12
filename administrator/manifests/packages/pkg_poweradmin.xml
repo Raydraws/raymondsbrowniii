@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="package" version="4.0" method="upgrade">
+    <name>POWERADMIN_XML_TITLE</name>
+    <packagename>poweradmin</packagename>
+    <version>1.0.0</version>
+    <author>JoomShaper</author>
+    <creationDate>Mar 2026</creationDate>
+    <authorEmail>support@joomshaper.com</authorEmail>
+    <copyright>Copyright (C) 2010 - 2026 JoomShaper. All rights reserved.</copyright>
+    <license>http://www.gnu.org/licenses/gpl-2.0.html GPLv2 or later</license>
+    <description>POWERADMIN_XML_DESCRIPTION</description>
+    <scriptfile>installer.script.php</scriptfile>
+    <files>
+            <file type="template" client="administrator" id="poweradmin">administrator/templates/poweradmin</file>
+            <file type="module" client="administrator" id="mod_accessibility">administrator/modules/mod_accessibility</file>
+    <file type="module" client="administrator" id="mod_cache">administrator/modules/mod_cache</file>
+    <file type="module" client="administrator" id="mod_checkins">administrator/modules/mod_checkins</file>
+    <file type="module" client="administrator" id="mod_content">administrator/modules/mod_content</file>
+    <file type="module" client="administrator" id="mod_extension_updates">administrator/modules/mod_extension_updates</file>
+    <file type="module" client="administrator" id="mod_quick_article">administrator/modules/mod_quick_article</file>
+    <file type="module" client="administrator" id="mod_resources">administrator/modules/mod_resources</file>
+            <file type="plugin" group="system" id="poweradmin">plugins/system/poweradmin</file>
+    <file type="plugin" group="system" id="poweradminmenuoverride">plugins/system/poweradminmenuoverride</file>
+    </files>
+    <languages>
+        <language tag="en-GB">language/en-GB/pkg_poweradmin.sys.ini</language>
+    </languages>
+    <updateservers>
+        <server type="extension" priority="1" name="Power Admin">https://www.joomshaper.com/updates/poweradmin.xml</server>
+    </updateservers>
+</extension>

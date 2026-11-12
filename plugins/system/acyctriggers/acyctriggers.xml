@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension version="3.0.0" method="upgrade" type="plugin" group="system">
+	<name>System - Joomla integration for AcyChecker</name>
+	<creationDate>June 2021</creationDate>
+	<version>1.8.0</version>
+	<author>Acyba</author>
+	<authorEmail>sales@acyba.com</authorEmail>
+	<authorUrl>https://www.acychecker.com</authorUrl>
+	<copyright>Copyright (C) 2021-2026 ACYBA SAS - All rights reserved.</copyright>
+	<license>GNU/GPLv3 https://www.gnu.org/licenses/gpl-3.0.html</license>
+	<description>This plugin is used for Joomla integration</description>
+	<files>
+		<filename plugin="acyctriggers">acyctriggers.php</filename>
+	</files>
+</extension>

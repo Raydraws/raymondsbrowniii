@@ -1,0 +1,52 @@
+<?php
+/**
+ * @package     Poweradmin
+ * @subpackage  com_redirect
+ *
+ * @copyright   Copyright (C) 2010 - 2026 JoomShaper. All rights reserved.
+ * @license     http://www.gnu.org/licenses/gpl-2.0.html GPLv2 or later
+ */
+
+defined('_JEXEC') or die;
+
+use Joomla\CMS\Component\ComponentHelper;
+use Joomla\CMS\HTML\HTMLHelper;
+use Joomla\CMS\Language\Text;
+use Joomla\CMS\Router\Route;
+
+$poweradminUiTabPath = JPATH_ADMINISTRATOR . '/templates/poweradmin/html/poweradminuitab.php';
+if (file_exists($poweradminUiTabPath)) {
+	require_once $poweradminUiTabPath;
+}
+
+HTMLHelper::_('behavior.formvalidator');
+HTMLHelper::_('behavior.keepalive');
+?>
+
+<form action="<?php echo Route::_('index.php?option=com_redirect&id=' . (int) $this->item->id); ?>" method="post" name="adminForm" id="link-form" class="form-validate">
+	<fieldset class="mt-3">
+		<?php echo JHtmlPoweradminUiTab::startTabSet('myTab', array('active' => 'basic')); ?>
+
+			<?php echo JHtmlPoweradminUiTab::addTab('myTab', 'basic', empty($this->item->id) ? Text::_('COM_REDIRECT_NEW_LINK') : Text::sprintf('COM_REDIRECT_EDIT_LINK', $this->item->id)); ?>
+
+			<div class="card bg-light">
+				<div class="card-body">
+				<?php echo $this->form->renderField('old_url'); ?>
+				<?php echo $this->form->renderField('new_url'); ?>
+				<?php echo $this->form->renderField('published'); ?>
+				<?php echo $this->form->renderField('comment'); ?>
+				<?php echo $this->form->renderField('id'); ?>
+				<?php echo $this->form->renderField('created_date'); ?>
+				<?php echo $this->form->renderField('modified_date'); ?>
+				<?php if (ComponentHelper::getParams('com_redirect')->get('mode')) : ?>
+					<?php echo $this->form->renderFieldset('advanced'); ?>
+				<?php endif; ?>
+				</div>
+			</div>
+			<?php echo JHtmlPoweradminUiTab::endTab(); ?>
+		<?php echo JHtmlPoweradminUiTab::endTabSet(); ?>
+
+		<input type="hidden" name="task" value="">
+		<?php echo HTMLHelper::_('form.token'); ?>
+	</fieldset>
+</form>

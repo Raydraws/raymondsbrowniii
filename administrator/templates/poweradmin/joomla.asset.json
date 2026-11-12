@@ -1,0 +1,256 @@
+{
+  "$schema": "https://developer.joomla.org/schemas/json-schema/web_assets.json",
+  "name": "poweradmin",
+  "version": "4.0.0",
+  "description": "Poweradmin is a Joomla 4 administrator template",
+  "license": "GPL-2.0-or-later",
+  "assets": [
+    {
+      "name": "template.poweradmin.base",
+      "type": "preset",
+      "dependencies": [
+        "core",
+		"bootstrap.js.bundle",
+        "css-vars-ponyfill",
+		"focus-visible",
+        "template.poweradmin#script"
+      ]
+    },
+    {
+      "name": "template.poweradmin.ltr",
+      "type": "preset",
+      "dependencies": ["template.poweradmin.base"],
+      "css": [
+        "template.css",
+        "user.css"
+      ]
+    },
+    {
+      "name": "template.atum.ltr",
+      "type": "preset",
+      "description": "Empty placeholder for Atum LTR preset (Compatibility)",
+      "dependencies": []
+    },
+    {
+      "name": "template.atum.rtl",
+      "type": "preset",
+      "description": "Empty placeholder for Atum RTL preset (Compatibility)",
+      "dependencies": []
+    },
+    {
+      "name": "template.atum.ltr",
+      "type": "style",
+      "description": "Empty placeholder for Atum LTR style (Compatibility)"
+    },
+    {
+      "name": "template.atum.rtl",
+      "type": "style",
+      "description": "Empty placeholder for Atum RTL style (Compatibility)"
+    },
+    {
+      "name": "template.active.language",
+      "type": "style",
+      "description": "Empty placeholder for active language style (Compatibility)"
+    },
+    {
+      "name": "template.user",
+      "type": "style",
+      "description": "Empty placeholder for user style (Compatibility)"
+    },
+    {
+      "name": "bootstrap.css",
+      "type": "style",
+      "css": [
+        "bootstrap.min.css"
+      ]
+    },
+    {
+      "name": "fontawesome",
+      "type": "style",
+      "css": [
+        "fontawesome.min.css"
+      ]
+    },
+    {
+      "name": "template.poweradmin",
+      "description": "The file containing the javascript for this template.",
+      "type": "script",
+      "uri": "administrator/templates/poweradmin/js/template.js",
+      "dependencies": [
+        "core"
+      ],
+      "attributes": {
+        "type": "module"
+      }
+    },
+    {
+      "name": "template.poweradmin.quickicon",
+      "description": "The quickicon javascript for this template.",
+      "type": "script",
+      "uri": "administrator/templates/poweradmin/js/quickicon.js",
+      "dependencies": [
+        "core"
+      ],
+      "attributes": {
+        "type": "module"
+      }
+    },
+    {
+      "name": "com_modules.admin-module-edit",
+      "type": "script",
+      "uri": "administrator/templates/poweradmin/js/com_modules/admin-module-edit.js",
+      "dependencies": [
+        "com_modules.admin-module-edit.es5"
+      ],
+      "attributes": {
+        "type": "module"
+      },
+      "version": "8a30c3729aa1c4c9b2ab1fb4689eb91b9ddf817d"
+    },
+    {
+      "name": "com_modules.admin-module-edit-assignment",
+      "type": "script",
+      "uri": "administrator/templates/poweradmin/js/com_modules/admin-module-edit_assignment.js",
+      "dependencies": [
+        "com_modules.admin-module-edit-assignment.es5"
+      ],
+      "attributes": {
+        "type": "module"
+      },
+      "version": "4de3d9472858708ec519409949136911b393b304"
+    },
+    {
+      "name": "com_modules.admin-modules-modal",
+      "type": "script",
+      "uri": "administrator/templates/poweradmin/js/com_modules/admin-modules-modal.js",
+      "dependencies": [
+        "com_modules.admin-modules-modal.es5"
+      ],
+      "attributes": {
+        "type": "module"
+      },
+      "version": "6dc90af7f60de190c029b58a09529038580d6607"
+    },
+    {
+      "name": "com_modules.admin-select-modal",
+      "type": "script",
+      "uri": "administrator/templates/poweradmin/js/com_modules/admin-select-modal.js",
+      "dependencies": [
+        "com_modules.admin-select-modal.es5"
+      ],
+      "attributes": {
+        "type": "module"
+      },
+      "version": "582486f83ac8f6f5ae4d616ec1390d590ae65c6b"
+    },
+    {
+      "name": "jquery-noconflict",
+      "type": "script",
+      "dependencies": [
+        "jquery"
+      ],
+      "uri": "administrator/templates/poweradmin/js/legacy/jquery-noconflict.js",
+      "version": "647005fc12b79b3ca2bb30c059899d5994e3e34d"
+    },
+    {
+      "name": "joomla.treeselectmenu",
+      "type": "script",
+      "dependencies": [
+        "jquery",
+        "bootstrap.dropdown"
+      ],
+      "uri": "administrator/templates/poweradmin/js/legacy/treeselectmenu.js",
+      "attributes": {
+        "defer": true
+      },
+      "version": "cfeea676926df40c887996afd9b4906201d58cac"
+    },
+    {
+      "name": "focus-visible",
+      "type": "script",
+      "uri": "administrator/templates/poweradmin/js/vendor/focus-visible/focus-visible.js",
+      "package": "focus-visible",
+      "version": "5.2.0"
+    },
+    {
+      "name": "css-vars-ponyfill",
+      "type": "script",
+      "uri": "administrator/templates/poweradmin/js/vendor/css-vars-ponyfill/js/css-vars-ponyfill.js",
+      "package": "css-vars-ponyfill",
+      "version": "1.17.2"
+    },
+    {
+      "name": "choicesjs",
+      "type": "style",
+      "uri": "administrator/templates/poweradmin/css/vendor/choicesjs/choices.css",
+      "package": "choices.js",
+      "version": "9.1.0"
+    },
+    {
+      "name": "choicesjs",
+      "type": "script",
+      "uri": "administrator/templates/poweradmin/js/vendor/choicesjs/choices.js",
+      "attributes": {
+        "defer": true
+      },
+      "package": "choices.js",
+      "version": "9.1.0"
+    },
+    {
+      "name": "dragula",
+      "type": "style",
+      "uri": "administrator/templates/poweradmin/css/vendor/dragula/dragula.css",
+      "package": "dragula",
+      "version": "3.7.3"
+    },
+    {
+      "name": "dragula",
+      "type": "script",
+      "uri": "administrator/templates/poweradmin/js/vendor/dragula/dragula.js",
+      "attributes": {
+        "defer": true
+      },
+      "package": "dragula",
+      "version": "3.7.3"
+    },
+    {
+      "name": "com_media.edit-images",
+      "type": "script",
+      "uri": "administrator/templates/poweradmin/js/com_media/edit-images.js",
+      "dependencies": [
+        "com_media.edit-images.es5"
+      ],
+      "attributes": {
+        "type": "module"
+      },
+      "version": "4d6f8cd78f4710a49a9bc2ab05e8bd01f2a90b22"
+    },
+    {
+      "name": "com_media.mediamanager.es5",
+      "type": "script",
+      "uri": "administrator/templates/poweradmin/js/com_media/media-manager.js",
+      "attributes": {
+        "type": "module"
+      },
+      "version": "f73b83c31db936f047d02c69dad00321760ba53a"
+    },
+    {
+      "name": "com_media.mediamanager",
+      "type": "style",
+      "uri": "administrator/templates/poweradmin/css/com_media/media-manager.min.css",
+      "version": "51a05fd9f6462d3a12c7eac2f6ec07381b9a654b"
+    },
+    {
+      "name": "com_media.mediamanager",
+      "type": "script",
+      "uri": "administrator/templates/poweradmin/js/com_media/media-manager.js",
+      "dependencies": [
+        "com_media.mediamanager.es5"
+      ],
+      "attributes": {
+        "type": "module"
+      },
+      "version": "8e3a78d4ae3e1ccce3bedff2c951a25009d8e086"
+    }
+  ]
+}

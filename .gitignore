@@ -1,0 +1,35 @@
+# --- Secrets: NEVER commit ---
+configuration.php
+.env
+*.sql
+*.sql.gz
+
+# --- Media: too big for Git, backed up separately ---
+/images/*
+!/images/index.html
+
+# --- Throwaway runtime files ---
+/cache/*
+!/cache/index.html
+/administrator/cache/*
+!/administrator/cache/index.html
+/administrator/logs/*
+!/administrator/logs/index.html
+/tmp/*
+!/tmp/index.html
+
+# --- Mac junk ---
+.DS_Store
+
+# Server-specific (live uses htaccess.txt copied on deploy)
+/.htaccess
+
+# Media lives outside Git (backed up separately)
+/files/*
+!/files/index.html
+
+# Video/audio media (large, backed up separately)
+/media/videos/
+
+# Ops automation (morning check) - never deploy
+ops/

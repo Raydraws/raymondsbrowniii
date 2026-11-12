@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="plugin" group="system" method="upgrade">
+	<name>plg_system_poweradminmenuoverride</name>
+	<version>1.0.0</version>
+	<creationDate>Mar 2026</creationDate>
+	<author>JoomShaper</author>
+	<authorEmail>support@joomshaper.com</authorEmail>
+    <license>http://www.gnu.org/licenses/gpl-2.0.html GPLv2 or later</license>
+	<description>PLG_SYSTEM_POWERADMINMENUOVERRIDE_DESCRIPTION</description>
+	<namespace path="src">Joomla\Plugin\System\PoweradminMenuOverride</namespace>
+	<scriptfile>installer.script.php</scriptfile>
+	<files>
+		<folder plugin="poweradminmenuoverride">services</folder>
+		<folder>src</folder>
+		<filename>installer.script.php</filename>
+	</files>
+	<languages>
+		<language tag="en-GB">language/en-GB/plg_system_poweradminmenuoverride.ini</language>
+		<language tag="en-GB">language/en-GB/plg_system_poweradminmenuoverride.sys.ini</language>
+	</languages>
+	<config>
+	</config>
+</extension>
+

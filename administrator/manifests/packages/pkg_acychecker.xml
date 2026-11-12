@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<extension type="package" version="3.0" method="upgrade">
+	<name>Package AcyChecker</name>
+	<creationDate>July 2021</creationDate>
+	<packagename>acychecker</packagename>
+	<version>1.8.0</version>
+	<authorEmail>dev@acyba.com</authorEmail>
+	<author>Acyba</author>
+	<packager>Acyba</packager>
+	<url>https://www.acychecker.com</url>
+	<packagerurl>https://www.acychecker.com</packagerurl>
+	<copyright>Copyright (C) 2021-2026 ACYBA SAS - All rights reserved.</copyright>
+	<license>GNU/GPLv3 https://www.gnu.org/licenses/gpl-3.0.html</license>
+	<description>AcyChecker package containing the component and its core plugins</description>
+	<files folder="packages">
+		<file type="component" id="com_acychecker">com_acychecker.zip</file>
+		<file type="plugin" id="acyctriggers" group="system">plg_system_acyctriggers.zip</file>
+	</files>
+	<scriptfile>pkg_acychecker.php</scriptfile>
+	<updateservers>
+		<server type="extension" priority="1" name="AcyChecker">https://api.acymailing.com/public/updatexml/component?extension=acychecker&amp;cms=joomla&amp;version=latest&amp;level=free</server>
+	</updateservers>
+</extension>

@@ -1,0 +1,81 @@
+<?php
+/**
+ * @package     Poweradmin
+ * @subpackage  com_contenthistory
+ *
+ * @copyright   Copyright (C) 2010 - 2026 JoomShaper. All rights reserved.
+ * @license     http://www.gnu.org/licenses/gpl-2.0.html GPLv2 or later
+ */
+
+defined('_JEXEC') or die;
+
+use Joomla\CMS\HTML\HTMLHelper;
+use Joomla\CMS\Language\Text;
+use Joomla\CMS\Session\Session;
+
+Session::checkToken('get') or die(Text::_('JINVALID_TOKEN'));
+
+$version2 = $this->items[0];
+$version1 = $this->items[1];
+$object1  = $version1->data;
+$object2  = $version2->data;
+
+HTMLHelper::_('script', 'vendor/diff/diff.js', array('version' => 'auto', 'relative' => true));
+HTMLHelper::_('script', 'com_contenthistory/admin-compare-compare.js', array('version' => 'auto', 'relative' => true));
+?>
+<fieldset>
+
+	<h2 class="mb-3"><?php echo Text::_('COM_CONTENTHISTORY_COMPARE_TITLE'); ?></h2>
+
+	<table id="diff" class="table">
+		<caption id="captionTable" class="sr-only">
+			<?php echo Text::_('COM_CONTENTHISTORY_COMPARE_CAPTION'); ?>
+		</caption>
+		<thead>
+			<tr>
+				<th scope="col" style="width:25%"><?php echo Text::_('COM_CONTENTHISTORY_PREVIEW_FIELD'); ?></th>
+				<th scope="col"><?php echo Text::_('COM_CONTENTHISTORY_COMPARE_OLD'); ?></th>
+				<th scope="col"><?php echo Text::_('COM_CONTENTHISTORY_COMPARE_NEW'); ?></th>
+				<th scope="col"><?php echo Text::_('COM_CONTENTHISTORY_COMPARE_DIFF'); ?></th>
+			</tr>
+		</thead>
+		<tbody>
+		<?php foreach ($object1 as $name => $value) : ?>
+			<?php if ($value->value != $object2->$name->value) : ?>
+			<tr>
+				<?php if (is_object($value->value)) : ?>
+					<td>
+						<strong><?php echo $value->label; ?></strong>
+					</td>
+					<td>&nbsp;</td>
+					<td>&nbsp;</td>
+					<td>&nbsp;</td>
+					<?php foreach ($value->value as $subName => $subValue) : ?>
+						<?php $newSubValue = $object2->$name->value->$subName->value ?? ''; ?>
+						<?php if ($subValue->value || $newSubValue) : ?>
+							<?php if ($subValue->value != $newSubValue) : ?>
+								<tr>
+									<td><em>&nbsp;&nbsp;<?php echo $subValue->label; ?></em></td>
+									<td class="original"><?php echo htmlspecialchars($subValue->value, ENT_COMPAT, 'UTF-8'); ?></td>
+									<td class="changed" ><?php echo htmlspecialchars($newSubValue, ENT_COMPAT, 'UTF-8'); ?></td>
+									<td class="diff">&nbsp;</td>
+								</tr>
+							<?php endif; ?>
+						<?php endif; ?>
+					<?php endforeach; ?>
+				<?php else : ?>
+					<th scope="row">
+						<?php echo $value->label; ?>
+					</th>
+					<td class="original"><?php echo htmlspecialchars($value->value); ?></td>
+					<?php $object2->$name->value = is_object($object2->$name->value) ? json_encode($object2->$name->value) : $object2->$name->value; ?>
+					<td class="changed"><?php echo htmlspecialchars($object2->$name->value, ENT_COMPAT, 'UTF-8'); ?></td>
+					<td class="diff">&nbsp;</td>
+				<?php endif; ?>
+			</tr>
+		<?php endif; ?>
+		<?php endforeach; ?>
+		</tbody>
+	</table>
+
+</fieldset>

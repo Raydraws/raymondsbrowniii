@@ -1,0 +1,339 @@
+/* Poweradmin form-select bridge: apply custom-select styling to Bootstrap 5 .form-select */
+
+.input-group > .form-select {
+  position: relative;
+  flex: 1 1 auto;
+  width: 1%;
+  margin-bottom: 0;
+  max-width: initial;
+  min-width: initial;
+}
+
+.input-group > .form-control + .form-select,
+.input-group > .form-control-plaintext + .form-select,
+.input-group > .form-select + .form-control,
+.input-group > .form-select + .form-select,
+.input-group > .form-select + .custom-file,
+.input-group > .custom-file + .form-select {
+  margin-left: -2px;
+}
+
+.input-group > .form-select:focus {
+  z-index: 3;
+}
+
+.input-group-lg > .form-control:not(textarea),
+.input-group-lg > .form-select {
+  height: calc(1.5em + 1rem + 4px);
+}
+
+.input-group-lg > .form-select,
+.input-group-sm > .form-select {
+  padding-right: 4rem;
+}
+
+.input-group-lg > .form-select,
+.input-group-lg > .input-group-prepend > .input-group-text,
+.input-group-lg > .input-group-append > .input-group-text,
+.input-group-lg > .input-group-prepend > .btn,
+.input-group-lg > .input-group-append > .btn {
+  padding: 0.5rem 1rem;
+  font-size: 1.25rem;
+  line-height: 1.5;
+}
+
+.input-group-sm > .form-control:not(textarea),
+.input-group-sm > .form-select {
+  height: calc(1.5em + 0.5rem + 4px);
+}
+
+.input-group-sm > .form-select,
+.input-group-sm > .input-group-prepend > .input-group-text,
+.input-group-sm > .input-group-append > .input-group-text,
+.input-group-sm > .input-group-prepend > .btn,
+.input-group-sm > .input-group-append > .btn {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.form-select {
+  border: 2px solid var(--input-border-color);
+  border-radius: 3px;
+  background-color: var(--bg-light-color);
+  display: block;
+  height: 2.86rem;
+  min-width: 100%;
+  font-size: 1rem;
+  max-width: 100%;
+  color: var(--primary-text-color);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1854.54 295' preserveAspectRatio='xMinYMid' width='1854.54' height='295'%3E%3Cpath d='M1825.1,145.7l6.9,6.9c0.1,0.1,0.2,0.1,0.3,0.1c0.1,0,0.2,0,0.3-0.1l6.9-6.9c0.1-0.1,0.1-0.2,0.1-0.3c0-0.1,0-0.2-0.1-0.3l-0.7-0.7c-0.1-0.1-0.2-0.1-0.3-0.1s-0.2,0-0.3,0.1l-5.8,5.8l-5.8-5.8c-0.1-0.1-0.2-0.1-0.3-0.1c-0.1,0-0.2,0-0.3,0.1l-0.7,0.7c-0.1,0.1-0.1,0.2-0.1,0.3C1824.9,145.5,1825,145.6,1825.1,145.7z' fill='%235e727c'/%3E%3Crect width='1810' height='295' fill='%23fafbfc'/%3E%3C/svg%3E%0A") no-repeat 100%/100rem;
+  background-color: var(--bg-light-color);
+  padding: 0 1.2rem;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding-right: 4rem;
+  vertical-align: middle;
+}
+
+.poweradmin-dark-mode .form-select {
+  background: url("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1854.54 295' preserveAspectRatio='xMinYMid' width='1854.54' height='295'><path d='M1825.1,145.7l6.9,6.9c0.1,0.1,0.2,0.1,0.3,0.1c0.1,0,0.2,0,0.3-0.1l6.9-6.9c0.1-0.1,0.1-0.2,0.1-0.3c0-0.1,0-0.2-0.1-0.3l-0.7-0.7c-0.1-0.1-0.2-0.1-0.3-0.1s-0.2,0-0.3,0.1l-5.8,5.8l-5.8-5.8c-0.1-0.1-0.2-0.1-0.3-0.1c-0.1,0-0.2,0-0.3,0.1l-0.7,0.7c-0.1,0.1-0.1,0.2-0.1,0.3C1824.9,145.5,1825,145.6,1825.1,145.7z' fill='#94a3b8'/><rect width='1810' height='295' fill='#111827' /></svg>");
+}
+
+.poweradmin-dark-mode .custom-select {
+  background: url("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1854.54 295' preserveAspectRatio='xMinYMid' width='1854.54' height='295'><path d='M1825.1,145.7l6.9,6.9c0.1,0.1,0.2,0.1,0.3,0.1c0.1,0,0.2,0,0.3-0.1l6.9-6.9c0.1-0.1,0.1-0.2,0.1-0.3c0-0.1,0-0.2-0.1-0.3l-0.7-0.7c-0.1-0.1-0.2-0.1-0.3-0.1s-0.2,0-0.3,0.1l-5.8,5.8l-5.8-5.8c-0.1-0.1-0.2-0.1-0.3-0.1c-0.1,0-0.2,0-0.3,0.1l-0.7,0.7c-0.1,0.1-0.1,0.2-0.1,0.3C1824.9,145.5,1825,145.6,1825.1,145.7z' fill='#94a3b8'/><rect width='1810' height='295' fill='#111827' /></svg>") !important;
+}	
+
+.poweradmin-dark-mode .tox.tox-tinymce,
+.poweradmin-dark-mode .tox .tox-editor-header,
+.poweradmin-dark-mode .tox .tox-toolbar-overlord,
+.poweradmin-dark-mode .tox .tox-toolbar,
+.poweradmin-dark-mode .tox .tox-toolbar__primary {
+  background: var(--bg-light-color) !important;
+  color: var(--primary-text-color) !important;
+  border-color: var(--input-border-color) !important;
+}
+
+.poweradmin-dark-mode .tox .tox-tbtn,
+.poweradmin-dark-mode .tox .tox-mbtn,
+.poweradmin-dark-mode .tox .tox-statusbar,
+.poweradmin-dark-mode .tox .tox-statusbar a,
+.poweradmin-dark-mode .tox .tox-statusbar__path-item {
+  color: var(--primary-text-color) !important;
+}
+
+.poweradmin-dark-mode .tox .tox-tbtn svg,
+.poweradmin-dark-mode .tox .tox-mbtn svg {
+  fill: var(--icon-color) !important;
+}
+
+.poweradmin-dark-mode .tox .tox-tbtn:hover,
+.poweradmin-dark-mode .tox .tox-tbtn:focus,
+.poweradmin-dark-mode .tox .tox-tbtn--enabled,
+.poweradmin-dark-mode .tox .tox-mbtn:hover,
+.poweradmin-dark-mode .tox .tox-mbtn:focus,
+.poweradmin-dark-mode .tox .tox-mbtn--active {
+  background: var(--primary-lighter-color) !important;
+  color: var(--primary-text-color) !important;
+}
+
+.poweradmin-dark-mode .tox .tox-tbtn:hover svg,
+.poweradmin-dark-mode .tox .tox-tbtn:focus svg,
+.poweradmin-dark-mode .tox .tox-tbtn--enabled svg,
+.poweradmin-dark-mode .tox .tox-mbtn:hover svg,
+.poweradmin-dark-mode .tox .tox-mbtn:focus svg,
+.poweradmin-dark-mode .tox .tox-mbtn--active svg {
+  fill: var(--success-color) !important;
+}
+
+.poweradmin-dark-mode .tox .tox-edit-area,
+.poweradmin-dark-mode .tox .tox-edit-area__iframe {
+  background: var(--bg-light-color) !important;
+  color: var(--primary-text-color) !important;
+  border-color: var(--input-border-color) !important;
+}
+
+.poweradmin-dark-mode .form-check-input {
+  background: var(--bg-light-color) !important;
+  color: var(--primary-text-color) !important;
+  border-color: var(--input-border-color) !important;
+}
+
+.j-layout-masonry-special > div {
+  break-inside: avoid;
+}
+
+.form-select::-webkit-input-placeholder,
+.form-select::-moz-placeholder,
+.form-select:-ms-input-placeholder,
+.form-select::-ms-input-placeholder,
+.form-select::placeholder {
+  color: var(--secondary-text-color);
+  opacity: 1;
+}
+
+.form-select[multiple] {
+  height: auto;
+  padding-right: 1rem;
+  background-image: none;
+}
+
+.form-select[multiple] option {
+  padding: 0.3rem 1rem;
+}
+
+.form-select.custom-select-color-state.custom-select-success {
+  color: var(--icon-color);
+  border-color: var(--primary-color);
+}
+
+.form-inline .form-select {
+  min-width: auto;
+}
+
+.view-login .form-select {
+  max-width: none;
+}
+
+.js-stools .js-stools-container-filters .form-select {
+  min-width: 15rem;
+}
+
+.main-nav-container ul li a.no-dropdown.active span svg, .main-nav-container ul li.parent.active a span svg {
+  color: var(--primary-color);
+}
+
+.poweradmin-dark-mode .main-nav-container ul li a span svg.sidebar-svg-icon {
+  color: #5B5B63;
+}
+
+.poweradmin-dark-mode .main-nav-container ul li a.no-dropdown.active span svg, .poweradmin-dark-mode .main-nav-container ul li.parent.active a span svg {
+  color: var(--primary-color);
+}
+
+#jed-container .com-apps-container .form-row {
+  display: flex;
+  gap: 1rem;
+}
+
+#jed-container .com-apps-container .form-row .col-md {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+#jed-container .com-apps-container .form-row:first-child .col-md:first-child {
+  flex-basis: unset;
+}
+
+#jed-container .breadcrumb {
+  margin-top: 1rem;
+}
+
+#adminForm tr th div.btn-group > a {
+  width: max-content;
+  margin-top: 5px;
+}
+
+@media (max-width: 575.98px) {
+  .js-stools .js-stools-container-filters .form-select {
+    min-width: 100%;
+  }
+}
+
+.js-stools .js-stools-container-bar .js-stools-field-list .form-select {
+  box-shadow: none;
+  border: none;
+  padding-right: 0;
+  font-size: 1rem;
+  color: var(--primary-text-color);
+  padding: 0 1.5rem 0 0;
+}
+
+@media (min-width: 992px) and (max-width: 1199.98px) {
+  .quick-icons .quickicon-draggable-container > .j-quickicon {
+    flex: 0 0 50%;
+    max-width: 50%;
+  }
+
+  .quick-icons .j-card-overview-box {
+    padding: 0 1rem 1.25rem;
+  }
+
+  .quick-icons .j-card-overview-box .j-card-overview-icon {
+    height: 3rem;
+    min-width: 3rem;
+    max-width: 3rem;
+    margin-right: 1rem;
+    font-size: 1.35rem;
+  }
+
+  .quick-icons .j-card-overview-box .j-card-overview-content {
+    font-size: 2.5rem;
+    line-height: 3.2rem;
+  }
+
+  #joomlaupdate-wrapper .row > [class*="col-md-"] {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  #joomlaupdate-wrapper fieldset {
+    overflow-x: auto;
+  }
+
+  #joomlaupdate-wrapper table {
+    table-layout: fixed;
+    width: 100%;
+  }
+
+  #joomlaupdate-wrapper th,
+  #joomlaupdate-wrapper td {
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    font-size: 0.92rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1199.98px) {
+  .com_menus.view-items .js-stools > .d-flex.align-items-center {
+    flex-wrap: wrap;
+    align-items: flex-start !important;
+    gap: 0.75rem;
+  }
+
+  .com_menus.view-items .js-stools > .d-flex.align-items-center > .ml-auto {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+
+  .com_menus.view-items .js-stools .js-stools-container-bar .d-flex {
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 0.75rem;
+  }
+
+  .com_menus.view-items .js-stools .js-stools-container-bar .d-flex > div,
+  .com_menus.view-items .js-stools .js-stools-container-bar .d-flex > div.ml-3 {
+    width: 100%;
+    margin-left: 0 !important;
+  }
+
+  .com_menus.view-items .js-stools .js-stools-input,
+  .com_menus.view-items .js-stools .js-stools-input .input-group {
+    width: 100%;
+  }
+
+  .com_menus.view-items .js-stools .js-stools-input .input-group {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+  }
+
+  .com_menus.view-items .js-stools .js-stools-input .form-control {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100% !important;
+  }
+
+  .com_menus.view-items .js-stools .js-stools-input .input-group-append {
+    display: flex;
+    flex: 0 0 auto;
+  }
+
+  .com_menus.view-items .js-stools .js-stools-input .input-group-append .btn {
+    height: 100%;
+    white-space: nowrap;
+  }
+
+  .com_menus.view-items .js-stools .js-stools-btn-filter,
+  .com_menus.view-items .js-stools .js-stools-btn-clear {
+    margin-left: 0 !important;
+  }
+
+  .com_menus.view-items .js-stools .js-stools-btn-filter {
+    margin-top: 0.5rem;
+  }
+}
+

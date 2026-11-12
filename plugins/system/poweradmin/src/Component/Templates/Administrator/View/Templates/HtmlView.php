@@ -1,0 +1,163 @@
+<?php
+/**
+ * @package     Poweradmin
+ * @subpackage  com_templates
+ *
+ * @copyright   Copyright (C) 2010 - 2026 JoomShaper. All rights reserved.
+ * @license     http://www.gnu.org/licenses/gpl-2.0.html GPLv2 or later
+ */
+
+namespace Joomla\Component\Templates\Administrator\View\Templates;
+
+defined('_JEXEC') or die;
+
+use Joomla\CMS\Component\ComponentHelper;
+use Joomla\CMS\Helper\ContentHelper;
+use Joomla\CMS\Language\Text;
+use Joomla\CMS\MVC\View\GenericDataException;
+use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
+use Joomla\CMS\Plugin\PluginHelper;
+use Joomla\CMS\Toolbar\ToolbarHelper;
+use Joomla\CMS\Toolbar\Toolbar;
+
+/**
+ * View class for a list of template styles.
+ *
+ * @since  1.6
+ */
+class HtmlView extends BaseHtmlView
+{
+	/**
+	 * The list of templates
+	 *
+	 * @var		array
+	 * @since   1.6
+	 */
+	protected $items;
+
+	/**
+	 * The pagination object
+	 *
+	 * @var		object
+	 * @since   1.6
+	 */
+	protected $pagination;
+
+	/**
+	 * The model state
+	 *
+	 * @var		object
+	 * @since   1.6
+	 */
+	protected $state;
+
+	/**
+	 * @var		string
+	 * @since   3.2
+	 */
+	protected $file;
+
+	/**
+	 * Form object for search filters
+	 *
+	 * @var    \JForm
+	 * @since  4.0.0
+	 */
+	public $filterForm;
+
+	/**
+	 * The active search filters
+	 *
+	 * @var    array
+	 * @since  4.0.0
+	 */
+	public $activeFilters;
+
+	/**
+	 * Is the parameter enabled to show template positions in the frontend?
+	 *
+	 * @var    boolean
+	 * @since  4.0.0
+	 */
+	public $preview;
+
+	/**
+	 * The state of installer override plugin.
+	 *
+	 * @var  array
+	 *
+	 * @since  4.0.0
+	 */
+	protected $pluginState;
+
+	public function __construct($config = [])
+	{
+		$toolbarAutoload = JPATH_ADMINISTRATOR . '/templates/poweradmin/html/PoweradminToolbar/autoload.php';
+		if (is_file($toolbarAutoload)) {
+			require_once $toolbarAutoload;
+		}
+		parent::__construct($config);
+	}
+
+	/**
+	 * Execute and display a template script.
+	 *
+	 * @param   string  $tpl  The name of the template file to parse; automatically searches through the template paths.
+	 *
+	 * @return  mixed  A string if successful, otherwise an Error object.
+	 *
+	 * @since   1.6
+	 */
+	public function display($tpl = null)
+	{
+		$this->items         = $this->get('Items');
+		$this->pagination    = $this->get('Pagination');
+		$this->state         = $this->get('State');
+		$this->total         = $this->get('Total');
+		$this->filterForm    = $this->get('FilterForm');
+		$this->activeFilters = $this->get('ActiveFilters');
+		$this->preview       = ComponentHelper::getParams('com_templates')->get('template_positions_display');
+		$this->file          = base64_encode('home');
+		$this->pluginState   = PluginHelper::isEnabled('installer', 'override');
+
+		// Check for errors.
+		if (count($errors = $this->get('Errors')))
+		{
+			throw new GenericDataException(implode("\n", $errors), 500);
+		}
+
+		$this->addToolbar();
+
+		return parent::display($tpl);
+	}
+
+	/**
+	 * Add the page title and toolbar.
+	 *
+	 * @return  void
+	 *
+	 * @since   1.6
+	 */
+	protected function addToolbar()
+	{
+		$canDo = ContentHelper::getActions('com_templates');
+
+		// Set the title.
+		if ((int) $this->get('State')->get('client_id') === 1)
+		{
+			ToolbarHelper::title(Text::_('COM_TEMPLATES_MANAGER_TEMPLATES_ADMIN'), 'brush thememanager');
+		}
+		else
+		{
+			ToolbarHelper::title(Text::_('COM_TEMPLATES_MANAGER_TEMPLATES_SITE'), 'brush thememanager');
+		}
+
+		if ($canDo->get('core.admin') || $canDo->get('core.options'))
+		{
+			ToolbarHelper::preferences('com_templates');
+			ToolbarHelper::divider();
+		}
+
+		ToolbarHelper::help('JHELP_EXTENSIONS_TEMPLATE_MANAGER_TEMPLATES');
+	}
+}
