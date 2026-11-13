@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension type="module" client="site" method="upgrade">
+	<name>RSB Member Code (Shopify)</name>
+	<author>Raydraws, L.L.C.</author>
+	<creationDate>2026-11</creationDate>
+	<version>1.0.0</version>
+	<description>Shows the current members-only Shopify discount code. Codes rotate on a fixed schedule: each period's code is worked out from a shared secret, and the morning check creates the matching code in Shopify ahead of time. Set this module's Access to Members.</description>
+	<namespace path="src">Raydraws\Module\RsbMemberCode</namespace>
+	<files>
+		<folder module="mod_rsb_membercode">services</folder>
+		<folder>src</folder>
+		<folder>tmpl</folder>
+	</files>
+	<config>
+		<fields name="params">
+			<fieldset name="basic">
+				<field name="style" type="list" label="Look" default="card"><option value="card">Homepage card</option><option value="link">Links page row</option></field>
+				<field name="secret" type="password" label="Code secret" description="Same value as ops/member-code-secret.txt. Never share it." filter="raw" />
+				<field name="anchor" type="text" label="First rotation starts (America/New_York)" default="2026-11-17 19:30" />
+				<field name="period_days" type="number" label="Days per code" default="5" min="1" max="60" filter="integer" />
+				<field name="first_code" type="text" label="Code before the first rotation" default="RSB3DISCOUNT" />
+				<field name="terms" type="text" label="Terms" default="$15 off when you buy 2 or more items at shop.raydraws.com. One use per customer." />
+				<field name="short_terms" type="text" label="Short terms" default="$15 off 2+ items" />
+				<field name="store_url" type="url" label="Store address" default="https://shop.raydraws.com" filter="url" />
+			</fieldset>
+		</fields>
+	</config>
+</extension>
