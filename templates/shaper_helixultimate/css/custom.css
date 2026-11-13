@@ -408,3 +408,14 @@ button.rsb-chip { cursor: pointer; font: inherit; font-size: 14px; }
 /* shop card (mod_rsb_shop): Shopify photos on white need a light panel */
 .rsb-shop__product--light { background: #FFFFFF !important; }
 .rsb-shop__label { background: var(--rsb-card); color: var(--rsb-ink); padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: Inter, system-ui, sans-serif; }
+
+/* ---------- homepage vertical rhythm ----------
+   SPPB writes inline #section-id { padding:0; margin:0 } rules, so these need !important. */
+.itemid-101 .sp-page-builder .page-content > .sppb-section { padding: 56px 0 0 !important; }
+.itemid-101 .sp-page-builder .page-content > .sppb-section:first-child { padding-top: 40px !important; }
+.itemid-101 .sp-page-builder .page-content > .sppb-section:last-child { padding-bottom: 72px !important; }
+.itemid-101 .sppb-column-addons > .sppb-addon-wrapper + .sppb-addon-wrapper { margin-top: 28px; }
+@media (max-width: 767px) {
+  .itemid-101 .sp-page-builder .page-content > .sppb-section { padding-top: 40px !important; }
+  .itemid-101 .sppb-column-addons > .sppb-addon-wrapper + .sppb-addon-wrapper { margin-top: 20px; }
+}
