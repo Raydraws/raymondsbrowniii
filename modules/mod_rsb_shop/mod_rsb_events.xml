@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension type="module" client="site" method="upgrade">
+	<name>RSB Events (Google Calendar)</name>
+	<author>Raydraws, L.L.C.</author>
+	<creationDate>2026-11</creationDate>
+	<version>1.0.0</version>
+	<description>Shows upcoming events from a public Google Calendar (iCal) feed. Keeps the last good copy if the feed can't be reached, and shows nothing when there are no upcoming events.</description>
+	<namespace path="src">Raydraws\Module\RsbEvents</namespace>
+	<files>
+		<folder module="mod_rsb_events">services</folder>
+		<folder>src</folder>
+		<folder>tmpl</folder>
+	</files>
+	<config>
+		<fields name="params">
+			<fieldset name="basic">
+				<field name="ics_url" type="url" label="Public iCal address" description="Google Calendar: Settings for the calendar, Integrate calendar, Public address in iCal format. Never use the secret address." filter="url" size="80" />
+				<field name="calendar_link" type="url" label="Link to the calendar (optional)" filter="url" size="80" />
+				<field name="count" type="number" label="Events to show" default="3" min="1" max="10" filter="integer" />
+				<field name="cache_minutes" type="number" label="Refresh every (minutes)" default="60" min="5" max="1440" filter="integer" />
+				<field name="heading" type="text" label="Card heading" default="COMING UP" />
+			</fieldset>
+		</fields>
+	</config>
+</extension>

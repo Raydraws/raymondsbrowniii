@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<extension type="module" client="site" method="upgrade">
+	<name>RSB Shop (Shopify)</name>
+	<author>Raydraws, L.L.C.</author>
+	<creationDate>2026-11</creationDate>
+	<version>1.0.0</version>
+	<description>Features a random product from a Shopify collection with its live name, price and link. Reads the store's public collection feed (no API key), caches it, and falls back to the last good copy or a fixed product.</description>
+	<namespace path="src">Raydraws\Module\RsbShop</namespace>
+	<files>
+		<folder module="mod_rsb_shop">services</folder>
+		<folder>src</folder>
+		<folder>tmpl</folder>
+	</files>
+	<config>
+		<fields name="params">
+			<fieldset name="basic">
+				<field name="store_url" type="url" label="Store address" default="https://shop.raydraws.com" filter="url" />
+				<field name="collection" type="text" label="Collection handle" default="backpacks-bags" />
+				<field name="images" type="textarea" rows="6" label="Featured products: handle = image" description="One per line. Only these products are featured, using your own image (e.g. on black). Leave empty to use every product in the collection with its Shopify photo." default="the-king-afro-style-backpack = images/worlds/bp-king-red.jpg&#10;the-king-dreads-style-backpack = images/worlds/bp-king-dreads.jpg&#10;the-king-flat-top-style-backpack = images/worlds/bp-king-flattop.jpg&#10;faces-backpack = images/worlds/bp-faces.jpg" />
+				<field name="cache_minutes" type="number" label="Refresh every (minutes)" default="60" min="5" max="1440" filter="integer" />
+				<field name="kicker" type="text" label="Small label" default="SHOP · shop.raydraws.com" />
+				<field name="headline" type="text" label="Headline" default="Prints, originals, apparel and beats in one cart" />
+			</fieldset>
+		</fields>
+	</config>
+</extension>
