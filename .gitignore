@@ -33,3 +33,6 @@ configuration.php
 
 # Ops automation (morning check) - never deploy
 ops/
+
+# Homepage/Worlds video (backed up with images)
+/media/worlds/
