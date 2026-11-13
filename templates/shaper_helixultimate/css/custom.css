@@ -419,3 +419,10 @@ button.rsb-chip { cursor: pointer; font: inherit; font-size: 14px; }
   .itemid-101 .sp-page-builder .page-content > .sppb-section { padding-top: 40px !important; }
   .itemid-101 .sppb-column-addons > .sppb-addon-wrapper + .sppb-addon-wrapper { margin-top: 20px; }
 }
+
+/* homepage Journal card: match the Spotify card height, bigger thumbs */
+.rsb-even-row .sppb-addon-wrapper > .clearfix { height: 100%; }
+.rsb-homejournal { display: flex; flex-direction: column; }
+.rsb-homejournal .rsb-homecard__head { margin-bottom: 12px; }
+.rsb-homejournal__item { flex: 1 1 auto; padding: 10px 0; }
+.rsb-homejournal__item img { width: 96px; height: 96px; flex: 0 0 96px; border-radius: 12px; }
