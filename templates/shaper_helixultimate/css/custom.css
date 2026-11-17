@@ -444,3 +444,8 @@ button.rsb-chip { cursor: pointer; font: inherit; font-size: 14px; }
 #sp-logo .logo a::before { transition: width .2s, height .2s; }
 #sp-header.header-sticky #sp-logo .logo { padding: 6px 0; }
 #sp-header.header-sticky #sp-logo .logo a::before { width: 48px; height: 68px; }
+
+/* shows: list is fed from artbyraybrown.com (mod_feed layout "abrshows") */
+.rsb-showlink { color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.rsb-showlink:hover, .rsb-showlink:focus-visible { text-decoration-thickness: 2px; color: inherit; }
+.rsb-showlist .what .rsb-solo { display: inline-block; margin-top: 0; font-size: 11px; color: inherit; }
