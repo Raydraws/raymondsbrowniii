@@ -430,20 +430,12 @@ button.rsb-chip { cursor: pointer; font: inherit; font-size: 14px; }
 /* world cards: square images (overrides the earlier fixed 220px height) */
 .rsb-wcard img, .rsb-wcard video { height: auto; aspect-ratio: 1 / 1; object-fit: cover; }
 
-/* header: face icon beside the name (same white-filled face as the footer, a bit larger) */
-#sp-logo .logo a { display: inline-flex; align-items: center; gap: 16px; }
-#sp-logo .logo a::before { content: ""; flex: none; width: 114px; height: 161px; background: url(../../../images/brand/raymondsbrowniii-face-filled.svg) no-repeat center bottom / contain; }
-@media (max-width: 767px) {
-  #sp-logo .logo a { gap: 10px; }
-  #sp-logo .logo a::before { width: 44px; height: 62px; }
-}
-/* let the header grow to fit the face; shrink it back when the header sticks on scroll */
-#sp-header { height: auto !important; }
-#sp-logo, #sp-logo .sp-column, #sp-logo .logo { height: auto !important; }
-#sp-logo .logo { padding: 10px 0; }
-#sp-logo .logo a::before { transition: width .2s, height .2s; }
-#sp-header.header-sticky #sp-logo .logo { padding: 6px 0; }
-#sp-header.header-sticky #sp-logo .logo a::before { width: 48px; height: 68px; }
+/* hero: face beside the intro paragraph; width tuned per breakpoint so the face spans the paragraph's height
+   (desktop 3 lines ~86px tall, tablet ~4 lines ~114px, phone ~5-6 lines) */
+.rsb-hero__intro { display: flex; align-items: stretch; gap: 18px; max-width: 722px; }
+.rsb-hero__intro::before { content: ""; flex: 0 0 62px; background: url(../../../images/brand/raymondsbrowniii-face-filled.svg) no-repeat center / contain; }
+@media (max-width: 991px) { .rsb-hero__intro::before { flex-basis: 90px; } }
+@media (max-width: 575px) { .rsb-hero__intro { gap: 14px; } .rsb-hero__intro::before { flex-basis: 72px; } }
 
 /* shows: list is fed from artbyraybrown.com (mod_feed layout "abrshows") */
 .rsb-showlink { color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 4px; }
