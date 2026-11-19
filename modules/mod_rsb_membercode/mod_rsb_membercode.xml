@@ -15,6 +15,9 @@
 		<fields name="params">
 			<fieldset name="basic">
 				<field name="style" type="list" label="Look" default="card"><option value="card">Homepage card</option><option value="link">Links page row</option></field>
+				<field name="fixed_code" type="text" label="Standing code" default="THEWORLDISMINE" description="When set, this code is always shown and the rotation below is ignored. Clear it to go back to rotating codes." />
+				<field name="fixed_terms" type="text" label="Standing code terms" default="15% off any order of $40 or more at shop.raydraws.com." />
+				<field name="fixed_short_terms" type="text" label="Standing code short terms" default="15% off orders $40+" />
 				<field name="secret" type="password" label="Code secret" description="Same value as ops/member-code-secret.txt. Never share it." filter="raw" />
 				<field name="anchor" type="text" label="First rotation starts (America/New_York)" default="2026-11-17 19:30" />
 				<field name="period_days" type="number" label="Days per code" default="5" min="1" max="60" filter="integer" />

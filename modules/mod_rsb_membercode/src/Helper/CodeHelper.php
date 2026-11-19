@@ -20,6 +20,13 @@ class CodeHelper
 
     public function getCode(Registry $params): ?object
     {
+        // Standing members code (Ray, 2026-11-19): one fixed code, no rotation.
+        // Clear "Standing code" in the module settings to go back to rotating codes.
+        $fixed = trim((string) $params->get('fixed_code', 'THEWORLDISMINE'));
+        if ($fixed !== '') {
+            return (object) ['code' => $fixed, 'ends' => null, 'fixed' => true];
+        }
+
         $tz     = new \DateTimeZone('America/New_York');
         $now    = new \DateTimeImmutable('now', $tz);
         $anchor = new \DateTimeImmutable((string) $params->get('anchor', '2026-11-17 19:30'), $tz);
