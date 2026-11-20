@@ -3,6 +3,7 @@
 namespace AcyMailing\FrontControllers;
 
 use AcyMailing\Core\AcymController;
+use Joomla\CMS\Factory;
 use Joomla\CMS\Helper\ModuleHelper;
 
 class ModuleloaderController extends AcymController
@@ -19,7 +20,9 @@ class ModuleloaderController extends AcymController
 
     public function loadAjax(): void
     {
-        if ($this->config->get('security_key') !== acym_getVar('string', 'seckey')) {
+        $securityKey = $this->config->get('security_key');
+        $providedKey = acym_getVar('string', 'seckey');
+        if (empty($securityKey) || !hash_equals((string)$securityKey, (string)$providedKey)) {
             acym_sendAjaxResponse(acym_translation('ACYM_UNAUTHORIZED_ACCESS'), [], false);
         }
 
@@ -28,7 +31,20 @@ class ModuleloaderController extends AcymController
             acym_sendAjaxResponse(acym_translation('ACYM_MODULE_NOT_FOUND'), [], false);
         }
 
-        $module = acym_loadObject('SELECT * FROM #__modules WHERE id = '.intval($moduleId));
+        // The output is rendered once and sent to every recipient, so it can only ever be what a visitor is allowed to see
+        $viewLevels = Factory::getUser()->getAuthorisedViewLevels();
+        acym_arrayToInteger($viewLevels);
+        if (empty($viewLevels)) {
+            acym_sendAjaxResponse(acym_translation('ACYM_MODULE_NOT_FOUND'), [], false);
+        }
+
+        $module = acym_loadObject(
+            'SELECT * FROM #__modules
+            WHERE id = '.intval($moduleId).'
+                AND published = 1
+                AND client_id = 0
+                AND access IN ('.implode(',', $viewLevels).')'
+        );
         if (empty($module)) {
             acym_sendAjaxResponse(acym_translation('ACYM_MODULE_NOT_FOUND'), [], false);
         }

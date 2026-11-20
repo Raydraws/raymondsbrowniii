@@ -10,37 +10,48 @@ use AcyMailing\Helpers\ScenarioHelper;
 
 trait SubscriberAutomationTriggers
 {
-    public function onAcymDeclareTriggers(&$triggers, &$defaultValues)
+    protected function initAutomationTriggers(): void
     {
         foreach ($this->triggers as $key => $name) {
-            $triggers['user'][$key] = new stdClass();
-            $triggers['user'][$key]->name = '<div class="cell shrink">'.acym_translation($name).'</div>';
-            $triggers['user'][$key]->option = '<input type="hidden" name="[triggers][user]['.$key.'][]" value="">';
-
-            if (in_array($key, $this->triggerMail)) {
-                $mailIdAttributes = [
-                    'data-class' => 'acym_select2_ajax',
-                    'data-placeholder' => acym_translation('ACYM_ANY_EMAIL', true),
-                    'data-params' => [
-                        'plugin' => 'plgAcymStatistics',
-                        'trigger' => 'searchMail',
-                    ],
-                ];
-                if (!empty($defaultValues['mail_'.$key])) $mailIdAttributes['data-selected'] = $defaultValues['mail_'.$key];
-
-                $triggers['user'][$key]->option .= '<div class="cell shrink">'.acym_select(
-                        [],
-                        '[triggers][user][mail_'.$key.']',
-                        null,
-                        $mailIdAttributes
-                    ).'</div>';
-            }
+            $this->automationTriggers['user'][$key] = acym_translation($name);
         }
     }
 
-    public function onAcymDeclareTriggersScenario(&$triggers, &$defaultValues)
+    public function displayTriggerOptions(string $fieldName, array $defaultValues, string $key): void
     {
-        $this->onAcymDeclareTriggers($triggers, $defaultValues);
+        echo '<input type="hidden" name="'.acym_escape($fieldName.'[]').'" value="">';
+
+        if (!in_array($key, $this->triggerMail)) {
+            return;
+        }
+
+        $mailIdAttributes = [
+            'data-class' => 'acym_select2_ajax',
+            'data-placeholder' => acym_translation('ACYM_ANY_EMAIL', true),
+            'data-params' => [
+                'plugin' => 'plgAcymStatistics',
+                'trigger' => 'searchMail',
+            ],
+        ];
+        if (!empty($defaultValues['mail_'.$key])) $mailIdAttributes['data-selected'] = $defaultValues['mail_'.$key];
+        ?>
+		<div class="cell shrink">
+            <?php
+            // This one is a sibling of the trigger in the saved data, not one of its children, see
+            // onAcymExecuteTrigger, so it keeps an absolute name
+            acym_select(
+                [],
+                '[triggers][user][mail_'.$key.']',
+                null,
+                $mailIdAttributes,
+                'value',
+                'text',
+                null,
+                false,
+                true
+            ); ?>
+		</div>
+        <?php
     }
 
     public function onAcymExecuteTrigger(&$step, &$execute, &$data)
@@ -65,7 +76,7 @@ trait SubscriberAutomationTriggers
         }
     }
 
-    public function onAcymDeclareSummary_triggers(&$automation)
+    public function onAcymDeclareSummary_triggers(object $automation): void
     {
         if (!empty($automation->triggers['user_open'])) $automation->triggers['user_open'] = acym_translation('ACYM_WHEN_USER_OPEN_MAIL');
         if (!empty($automation->triggers['user_click'])) $automation->triggers['user_click'] = acym_translation('ACYM_WHEN_USER_CLICKS_MAIL');

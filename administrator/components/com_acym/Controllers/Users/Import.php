@@ -17,6 +17,7 @@ trait Import
 
         $userClass = new UserClass();
 
+        // Get tables from database
         $tables = acym_getTables();
         $arrayTables = [];
         foreach ($tables as $tableName) {
@@ -66,14 +67,20 @@ trait Import
         acym_checkToken();
 
         $function = acym_getVar('cmd', 'import_from');
-        $allowedImportModes = acym_isAdmin() ? ['file', 'textarea', 'cms', 'database', 'mailpoet', 'contact'] : ['file', 'textarea'];
+        $allowedImportModes = acym_isAdmin() ? ['file', 'textarea', 'cms', 'mailpoet', 'contact'] : ['file', 'textarea'];
+
+        // The table name comes from the request, this mode can read any data of the site
+        if (acym_hasAdminPermissions()) {
+            $allowedImportModes[] = 'database';
+        }
+
         if (!in_array($function, $allowedImportModes)) {
             die('Access denied for this import method');
         }
 
         $importHelper = new ImportHelper();
 
-        if (empty($function) || !$importHelper->$function()) {
+        if (empty($function) || $importHelper->isUserEmailIndexMissing() || !$importHelper->$function()) {
             $this->import();
 
             return;
@@ -116,8 +123,12 @@ trait Import
 
     public function finalizeImport(): void
     {
+        acym_checkToken();
+
         $importHelper = new ImportHelper();
-        $importHelper->finalizeImport();
+        if (!$importHelper->isUserEmailIndexMissing()) {
+            $importHelper->finalizeImport();
+        }
 
         $this->listing();
     }
@@ -130,6 +141,8 @@ trait Import
         }
         $exportHelper = new ExportHelper();
         $exportHelper->setDownloadHeaders($filename);
+
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Downloading a file.
         echo file_get_contents(ACYM_MEDIA.'import'.DS.$filename.'.csv');
         exit;
     }
@@ -140,13 +153,14 @@ trait Import
         if (empty($tableName)) {
             exit;
         }
+
+        echo '<option value=""></option>';
+
         $columns = acym_getColumns($tableName, false, false);
-        $allColumnsSelect = '<option value=""></option>';
         foreach ($columns as $oneColumn) {
-            $allColumnsSelect .= '<option value="'.acym_escape($oneColumn).'">'.$oneColumn.'</option>';
+            echo '<option value="'.acym_escape($oneColumn).'">'.acym_escapeHtml($oneColumn).'</option>';
         }
 
-        echo $allColumnsSelect;
         exit;
     }
 }

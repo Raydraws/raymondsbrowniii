@@ -1,10 +1,11 @@
 <?php
+defined('_JEXEC') || die('Restricted Access');
 
 function acym_absoluteURL(string $text): string
 {
     static $mainurl = '';
     if (empty($mainurl)) {
-        $urls = parse_url(ACYM_LIVE);
+        $urls = acym_parseUrl(ACYM_LIVE);
         if (!empty($urls['path'])) {
             $mainurl = substr(ACYM_LIVE, 0, strrpos(ACYM_LIVE, $urls['path'])).'/';
         } else {
@@ -12,6 +13,8 @@ function acym_absoluteURL(string $text): string
         }
     }
 
+    //It will remove the undefined thing added by tinyMCE
+    // And URL with twice the domain
     $text = str_replace(
         [
             'href="../undefined/',
@@ -31,10 +34,14 @@ function acym_absoluteURL(string $text): string
         ],
         $text
     );
+    //We remove errors with /administrator links and our tags
+    //We replace /{ by { , it's also a bug with the editor...
     $text = preg_replace('#href="(/?administrator)?/({|%7B)#Ui', 'href="$2', $text);
 
+    //We replace http:/ by http:// , it will avoid a user bug! seriously we are nice guys...
     $text = preg_replace('#href="http:/([^/])#Ui', 'href="http://$1', $text);
 
+    //Sometimes clients add links without http:// but directly with their website url... let's try to catch some of these errors
     $text = preg_replace(
         '#href="'.preg_quote(str_replace(['http://', 'https://'], '', $mainurl), '#').'#Ui',
         'href="'.$mainurl,
@@ -43,11 +50,18 @@ function acym_absoluteURL(string $text): string
 
     $replace = [];
     $replaceBy = [];
+    //We don't convert urls starting with { or [ into absolute url otherwise it could break a tag
+    //WE don't modify links starting with \\ as it replaces the protocole http / https
     if ($mainurl !== ACYM_LIVE) {
+        //url like ../ your site...
+        //We don't transform mailto: # http:// ...
 
         $replace[] = '#(href|src|action|background)[ ]*=[ ]*\"(?!(\{|%7B|\[|\#|\\\\|[a-z]{3,15}:|/))(?:\.\./)#i';
         $replaceBy[] = '$1="'.substr(ACYM_LIVE, 0, strrpos(rtrim(ACYM_LIVE, '/'), '/') + 1);
 
+        //sub folder : substr(ACYM_LIVE,strrpos(rtrim(ACYM_LIVE,'/'),'/'))
+        //We remove the sub folder if there is a tag... otherwise we will break the whole thing.
+        //We had an issue with that when selecting the readonline link via the front-end
 
         $subfolder = substr(ACYM_LIVE, strrpos(rtrim(ACYM_LIVE, '/'), '/'));
         $replace[] = '#(href|src|action|background)[ ]*=[ ]*\"'.preg_quote($subfolder, '#').'(\{|%7B)#i';
@@ -59,6 +73,7 @@ function acym_absoluteURL(string $text): string
     $replace[] = '#(href|src|action|background)[ ]*=[ ]*\"(?!(\{|%7B|\[|\#|\\\\|[a-z]{3,15}:))/#i';
     $replaceBy[] = '$1="'.$mainurl;
 
+    //background images for div
     $replace[] = '#((?:background-image|background)[ ]*:[ ]*url\((?:\'|"|&quot;)?(?!(\\\\|[a-z]{3,15}:|/|\'|"|&quot;))(?:\.\./|\./)?)#i';
     $replaceBy[] = '$1'.ACYM_LIVE;
 
@@ -70,7 +85,7 @@ function acym_mainURL(string &$link): string
     static $baseUrl = '';
     static $otherArguments = false;
     if (empty($baseUrl)) {
-        $urls = parse_url(ACYM_LIVE);
+        $urls = acym_parseUrl(ACYM_LIVE);
         if (isset($urls['path']) && strlen($urls['path']) > 0) {
             $baseUrl = substr(ACYM_LIVE, 0, strrpos(ACYM_LIVE, $urls['path'])).'/';
             $otherArguments = trim(str_replace($baseUrl, '', ACYM_LIVE), '/');
@@ -92,14 +107,26 @@ function acym_mainURL(string &$link): string
 function acym_currentURL(): string
 {
     $protocol = isset($_SERVER['HTTPS']) || !empty($_SERVER['HTTP_UPGRADE_INSECURE_REQUESTS']) ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'] ?? ($_SERVER['SERVER_NAME'] ?? getenv('HTTP_HOST'));
 
-    return $protocol.'://'.$host.$_SERVER['REQUEST_URI'];
+    $httpHost = acym_getVar('string', 'HTTP_HOST', '', 'SERVER');
+    $serverName = acym_getVar('string', 'SERVER_NAME', '', 'SERVER');
+
+    $host = empty($httpHost)
+        ? (
+        empty($serverName)
+            ? getenv('HTTP_HOST')
+            : $serverName
+        )
+        : $httpHost;
+
+    $requestUri = acym_getVar('string', 'REQUEST_URI', '', 'SERVER');
+
+    return $protocol.'://'.$host.$requestUri;
 }
 
 function acym_cleanUrl(string $url, array $parametersToRemove): string
 {
-    $parts = parse_url($url);
+    $parts = acym_parseUrl($url);
 
     if (empty($parts['query'])) {
         return $url;
@@ -125,11 +152,26 @@ function acym_internalUrlToPath(string $url): string
     $base = str_replace(['http://www.', 'https://www.', 'http://', 'https://'], '', ACYM_LIVE);
     $replacements = ['https://www.'.$base, 'http://www.'.$base, 'https://'.$base, 'http://'.$base];
     foreach ($replacements as $oneReplacement) {
-        if (strpos($url, $oneReplacement) === false) {
+        $position = strpos($url, $oneReplacement);
+        if ($position === false) {
             continue;
         }
 
-        return str_replace([$oneReplacement, '/'], [ACYM_ROOT, DS], urldecode($url));
+        // Remove parameters
+        $relativeUrl = substr($url, $position + strlen($oneReplacement));
+        $relativeUrl = preg_replace('/[?#].*$/', '', $relativeUrl);
+
+        // Remove encoded / and .
+        $segments = [];
+        foreach (explode('/', $relativeUrl) as $oneSegment) {
+            $decodedSegment = urldecode($oneSegment);
+            if (preg_match('#[/\\\\?\#]#', $decodedSegment) === 1 || in_array($decodedSegment, ['.', '..'], true)) {
+                return $url;
+            }
+            $segments[] = $decodedSegment;
+        }
+
+        return ACYM_ROOT.implode(DS, $segments);
     }
 
     return $url;
@@ -137,9 +179,11 @@ function acym_internalUrlToPath(string $url): string
 
 function acym_isValidUrl(string $url): bool
 {
+    // If this option is not activated in the php.ini file, we return true because the function get_headers will not work
     if (empty(ini_get('allow_url_fopen'))) {
         return true;
     }
+    // If we detect youtu.be url, we don't check the headers because it's a redirection to a valid Url
     if (strpos($url, 'youtu.be') !== false) {
         return true;
     }
@@ -153,5 +197,52 @@ function acym_isImageUrl(string $url): bool
 {
     $extension = strtolower(pathinfo($url, PATHINFO_EXTENSION));
 
-    return in_array($extension, acym_getImageFileExtensions());
+    return in_array($extension, acym_getImageFileExtensions(true));
+}
+
+function acym_checkRedirect(string $redirectUrl): bool
+{
+    $config = acym_config();
+    $allowedHosts = $config->get('allowed_hosts', '');
+    $allowedHosts = str_replace(',', '|', $allowedHosts);
+    $allowedHosts = str_replace(['https://', 'http://', 'www.'], '', $allowedHosts);
+
+    $regex = trim(preg_replace('#[^a-z0-9\|\.]#i', '', $allowedHosts), '|');
+    if (empty($regex) || $regex == 'all' || empty($redirectUrl)) return true;
+
+    preg_match('#^(https?://)?(www.)?([^/]*)#i', $redirectUrl, $resultsurl);
+    $domainredirect = preg_replace('#[^a-z0-9\.]#i', '', @$resultsurl[3]);
+    if (preg_match('#^'.$regex.'$#i', $domainredirect)) return true;
+
+    return false;
+}
+
+// A redirect target coming from the request may only leave the site when the admin listed the host, acym_checkRedirect alone allows everything as long as allowed_hosts is empty
+function acym_isTrustedRedirect(string $redirectUrl): bool
+{
+    if ($redirectUrl === '') {
+        return true;
+    }
+
+    // Browsers read //host and /\host as protocol relative, parse_url only reports a host for the first one
+    if (preg_match('~^/[/\\\\]~', $redirectUrl)) {
+        return false;
+    }
+
+    $parsedUrl = acym_parseUrl($redirectUrl);
+    if ($parsedUrl === false) {
+        return false;
+    }
+
+    $host = $parsedUrl['host'] ?? '';
+    if (empty($host)) {
+        return true;
+    }
+
+    $siteUrl = acym_parseUrl(ACYM_LIVE);
+    if (!empty($siteUrl['host']) && strcasecmp($host, $siteUrl['host']) === 0) {
+        return true;
+    }
+
+    return trim(acym_config()->get('allowed_hosts', '')) !== '' && acym_checkRedirect($redirectUrl);
 }

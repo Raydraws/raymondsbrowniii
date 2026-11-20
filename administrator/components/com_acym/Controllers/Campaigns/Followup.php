@@ -192,7 +192,8 @@ trait Followup
             return;
         }
 
-        $favoriteTemplate = $this->config->get('favorite_template', 0);
+        $mailClass = new MailClass();
+        $favoriteTemplate = $mailClass->getFavoriteTemplateId();
         $startFrom = empty($favoriteTemplate) ? '' : '&from='.$favoriteTemplate;
         $data = [
             'workflowHelper' => new WorkflowHelper(),
@@ -210,14 +211,15 @@ trait Followup
             'campaigns&task=edit&step=followupEmail&id='.$followup->id
         );
 
+        // Ask the user if he wants to add the new email to the queue for the users that already triggered the followup
         if (intval($followup->active) === 1) {
             $newlyCreatedEmail = acym_getVar('int', 'newEmailId');
             if (!empty($newlyCreatedEmail)) {
                 $numberOfSubscribers = $followupClass->getNumberSubscribersByListId($followup->list_id, true);
                 if (!empty($numberOfSubscribers)) {
-                    $message = '<span class="acym__followup__add_queue" data-acym-email-id="'.intval($newlyCreatedEmail).'">';
+                    $message = '<button type="button" class="acym__followup__add_queue" data-acym-email-id="'.intval($newlyCreatedEmail).'">';
                     $message .= acym_translationSprintf('ACYM_FOLLOWUP_ADD_QUEUE', $numberOfSubscribers);
-                    $message .= '</span>';
+                    $message .= '</button>';
                     acym_enqueueMessage($message, 'info', false);
                 }
             }
@@ -228,6 +230,8 @@ trait Followup
 
     public function followupDuplicateMail(): void
     {
+        acym_checkToken();
+
         $mailId = acym_getVar('int', 'action_mail_id', 0);
         $id = acym_getVar('int', 'id', 0);
         $followupClass = new FollowupClass();
@@ -240,6 +244,8 @@ trait Followup
 
     public function followupDeleteMail(): void
     {
+        acym_checkToken();
+
         $mailId = acym_getVar('int', 'action_mail_id', 0);
         $followupClass = new FollowupClass();
         if (!$followupClass->deleteMail($mailId)) {
@@ -247,16 +253,23 @@ trait Followup
         }
 
         $step = acym_getVar('cmd', 'step', 'followupEmail');
+        if (!in_array($step, ['followupEmail', 'followupSummary'], true)) {
+            $step = 'followupEmail';
+        }
         $this->$step();
     }
 
     public function followupDraft(): void
     {
+        acym_checkToken();
+
         $this->followupFinalize(0);
     }
 
     public function followupActivate(): void
     {
+        acym_checkToken();
+
         $this->followupFinalize(1);
     }
 
@@ -273,7 +286,9 @@ trait Followup
 
     public function saveFollowupCondition(): void
     {
-        if (!acym_isAdmin()) {
+        acym_checkToken();
+
+        if (!acym_isAdmin() || !acym_isAllowed('campaigns')) {
             die('Access denied for follow-ups');
         }
 
@@ -290,7 +305,7 @@ trait Followup
             $followup = new stdClass();
             $followup->name = '';
             $followup->display_name = '';
-            $followup->creation_date = date('Y-m-d H:i:s', time() - date('Z'));
+            $followup->creation_date = gmdate('Y-m-d H:i:s', time());
             $followup->trigger = $trigger;
             $followup->condition = json_encode($followupData['condition']);
             $followup->active = 0;
@@ -312,7 +327,9 @@ trait Followup
 
     public function saveFollowupEmail(bool $redirect = true): void
     {
-        if (!acym_isAdmin()) {
+        acym_checkToken();
+
+        if (!acym_isAdmin() || !acym_isAllowed('campaigns')) {
             die('Access denied for follow-ups');
         }
 

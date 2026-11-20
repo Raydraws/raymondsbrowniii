@@ -14,12 +14,20 @@ $acymCmsUserVars->email = 'email';
 $acymCmsUserVars->registered = 'registerDate';
 $acymCmsUserVars->blocked = 'block';
 
+/**
+ * @param null $userid
+ * @param null $recursive
+ * @param bool $names Return an array of ids or names
+ *
+ * @return array
+ */
 function acym_getGroupsByUser(?int $userid = null, ?bool $recursive = null, bool $names = false): array
 {
     if ($userid === null) {
         $userid = acym_currentUserId();
-        $recursive = true;
     }
+
+    $recursive = $recursive ?? true;
 
     jimport('joomla.access.access');
 
@@ -53,7 +61,19 @@ function acym_punycode(string $email, string $method = 'emailToPunycode'): strin
         return $email;
     }
 
-    return PunycodeHelper::$method($email);
+    if (strpos($email, '@') === false) {
+        return $email;
+    }
+
+    [$local, $domain] = explode('@', $email, 2);
+
+    try {
+        $domain = PunycodeHelper::toPunycode($domain);
+    } catch (\Exception $e) {
+        return $email;
+    }
+
+    return $local.'@'.$domain;
 }
 
 function acym_currentUserId(): int
@@ -68,12 +88,12 @@ function acym_currentUserName(?int $userid = null): string
     if (!empty($userid)) {
         $special = Factory::getUser($userid);
 
-        return $special->name;
+        return empty($special->name) ? '' : $special->name;
     }
 
     $acymy = Factory::getUser();
 
-    return $acymy->name;
+    return empty($acymy->name) ? '' : $acymy->name;
 }
 
 function acym_currentUserEmail(int $userid = 0): string
@@ -87,9 +107,11 @@ function acym_replaceGroupTags(string $uploadFolder): string
 {
     if (strpos($uploadFolder, '{groupname}') === false) return $uploadFolder;
 
+    // Get user groups
     $groups = acym_getGroupsByUser(acym_currentUserId(), false);
     acym_arrayToInteger($groups);
 
+    // Get group name
     $group = acym_loadResult('SELECT title FROM #__usergroups WHERE id = '.intval(max($groups)));
 
     $uploadFolder = str_replace(

@@ -280,8 +280,35 @@ trait Tests
         acym_sendAjaxResponse('', ['result' => $result]);
     }
 
+    public function spamTestResults(): void
+    {
+        $url = acym_getVar('string', 'url', '');
+
+        if (empty($url) || strpos($url, 'mailtester.') === false) {
+            acym_sendAjaxResponse('Invalid URL', [], false);
+        }
+
+        $url .= '&format=json';
+
+        $response = acym_fileGetContent($url);
+
+        if ($response === false) {
+            acym_sendAjaxResponse('Could not fetch results', [], false);
+        }
+
+        $data = json_decode($response, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            acym_sendAjaxResponse('Invalid response', [], false);
+        }
+
+        acym_sendAjaxResponse('', $data, true);
+    }
+
     public function checkSPAM(): void
     {
+        acym_checkToken();
+
         $message = '';
         $data = [];
         $success = false;
@@ -304,6 +331,7 @@ trait Tests
             $spamtestSystem = UpdatemeHelper::call('public/getSpamSystem?level='.$level.'&urlSite='.$urlSite);
             $warnings = ob_get_clean();
 
+            // Could not load the information
             if (empty($spamtestSystem) || !empty($warnings)) {
                 $message = acym_translation('ACYM_ERROR_LOAD_FROM_ACYBA').(!empty($warnings) && acym_isDebug() ? $warnings : '');
             } else {
@@ -318,6 +346,7 @@ trait Tests
                         $mailerHelper = new MailerHelper();
                         $mailerHelper->report = false;
 
+                        //send a message to acy-WEBSITE-randnumber@mail-tester.com
                         $receiver = new \stdClass();
                         $receiver->id = 0;
                         $receiver->email = $spamtestSystem['email'];

@@ -1,9 +1,10 @@
 <?php
+defined('_JEXEC') || die('Restricted Access');
 
 function acym_replaceDateTags(string $value): string
 {
     $replace = ['{year}', '{month}', '{weekday}', '{day}'];
-    $replaceBy = [date('Y'), date('m'), date('N'), date('d')];
+    $replaceBy = [gmdate('Y'), gmdate('m'), gmdate('N'), gmdate('d')];
     $value = str_replace($replace, $replaceBy, $value);
 
     $results = [];
@@ -11,7 +12,7 @@ function acym_replaceDateTags(string $value): string
         foreach ($results[0] as $i => $oneMatch) {
             $format = str_replace(['year', 'month', 'weekday', 'day'], ['Y', 'm', 'N', 'd'], $results[1][$i]);
             $delay = str_replace(['add', 'remove'], ['+', '-'], $results[2][$i]).intval($results[3][$i]).' '.str_replace('weekday', 'day', $results[1][$i]);
-            $value = str_replace($oneMatch, date($format, strtotime($delay)), $value);
+            $value = str_replace($oneMatch, gmdate($format, strtotime($delay)), $value);
         }
     }
 
@@ -20,8 +21,10 @@ function acym_replaceDateTags(string $value): string
 
 function acym_dateField(string $name, $value = '', string $class = '', string $attributes = '', string $relativeDefault = '-'): string
 {
+    // Open container
     $result = '<div class="grid-x margin-y date_rs_selection_popup">';
 
+    // Choice of relative / specific date
     $result .= '<div class="cell grid-x">';
     $result .= acym_switchFilter(
         [
@@ -34,6 +37,7 @@ function acym_dateField(string $name, $value = '', string $class = '', string $a
     );
     $result .= '</div>';
 
+    // Relative date options
     $result .= '<div class="cell date_rs_selection_choice date_rs_selection_relative grid-x grid-margin-x align-center">
                     <div class="cell medium-4">
                         <input type="number" class="relativenumber" value="0">
@@ -65,10 +69,11 @@ function acym_dateField(string $name, $value = '', string $class = '', string $a
     $result .= '</div>
             </div>';
 
+    // Specific date option
     $result .= '<div class="cell date_rs_selection_choice date_rs_selection_specific grid-x align-center acym_vcenter" style="display: none;">
                     <span class="cell shrink margin-right-1">'.acym_translation('ACYM_CHOOSE_DATE').'</span>
                     <div class="cell shrink">
-                        <input type="text" name="specific_'.acym_escape($name).'" class="acy_date_picker" data-acym-translate="0" readonly>
+                        <input type="datetime-local" name="specific_'.acym_escape($name).'" class="acy_date_picker">
                     </div>
                 </div>
                 <div class="cell grid-x grid-margin-x">
@@ -78,8 +83,10 @@ function acym_dateField(string $name, $value = '', string $class = '', string $a
                     <div class="cell auto"></div>
                 </div>';
 
+    // Close container
     $result .= '</div>';
 
+    // Input in which the value is
     $id = 'acym_'.preg_replace('#[^a-z0-9_]#i', '', $name);
     if (is_numeric($value)) {
         $months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -93,19 +100,25 @@ function acym_dateField(string $name, $value = '', string $class = '', string $a
     } else {
         $shownValue = $value;
     }
-    $result = '<input data-rs="'.acym_escape($id).'" type="hidden" name="'.acym_escape($name).'" value="'.acym_escape($value).'">'.acym_modal(
-            '<input data-open="'.acym_escape($id).'" class="rs_date_field '.$class.'" '.$attributes.' type="text" value="'.acym_escape($shownValue).'" readonly>',
-            $result,
-            $id,
-            [],
-            [],
-            false,
-            false
-        );
+    $hiddenField = '<input data-rs="'.acym_escape($id).'" type="hidden" name="'.acym_escape($name).'" value="'.acym_escape($value).'">';
+    ob_start();
+    acym_modal(
+        '<input data-open="'.acym_escape($id).'" class="rs_date_field '.acym_escape($class).'" '.$attributes.' type="text" value="'.acym_escape($shownValue).'" readonly>',
+        $result,
+        $id,
+        [],
+        [],
+        false,
+        false
+    );
+    $result = $hiddenField.ob_get_clean();
 
     return $result;
 }
 
+/**
+ * Function to display the time based on the database value as int
+ */
 function acym_getDate($time = 0, string $format = '%d %B %Y %H:%M')
 {
     if (empty($time)) return '';
@@ -120,10 +133,11 @@ function acym_getDate($time = 0, string $format = '%d %B %Y %H:%M')
         $format
     );
 
+    //Not sure why but sometimes it fails... so lets try to catch the error...
     try {
         return acym_date($time, $format, false);
     } catch (Exception $e) {
-        return date($format, $time);
+        return gmdate($format, $time);
     }
 }
 
@@ -228,7 +242,7 @@ function acym_displayDateFormat(string $format, string $name = 'date', string $d
                         $days,
                         $name,
                         empty($defaultDate[2]) || $defaultDate[2] === '00' ? '' : $defaultDate[2],
-                        $attributes,
+                        array_merge($attributes, ['aria-label' => acym_translation('ACYM_DAY')]),
                         'value',
                         'text',
                         $name.'-'.$one
@@ -244,7 +258,7 @@ function acym_displayDateFormat(string $format, string $name = 'date', string $d
                         $month,
                         $name,
                         empty($defaultDate[1]) || $defaultDate[1] === '00' ? '' : $defaultDate[1],
-                        $attributes,
+                        array_merge($attributes, ['aria-label' => acym_translation('ACYM_MONTH')]),
                         'value',
                         'text',
                         $name.'-'.$one
@@ -260,7 +274,7 @@ function acym_displayDateFormat(string $format, string $name = 'date', string $d
                         $year,
                         $name,
                         empty($defaultDate[0]) || $defaultDate[0] === '0000' ? '' : $defaultDate[0],
-                        $attributes,
+                        array_merge($attributes, ['aria-label' => acym_translation('ACYM_YEAR')]),
                         'value',
                         'text',
                         $name.'-'.$one
@@ -282,20 +296,39 @@ function acym_displayDateFormat(string $format, string $name = 'date', string $d
 
 function acym_getTimeFromUTCDate(?string $date): int
 {
+    // Accept null/empty inputs gracefully and return 0 when no valid date is provided to avoid error.
     if (empty($date)) {
         return 0;
     }
 
-    $timestamp = strtotime($date);
+    // Stored dates are UTC: parse them as UTC so the resulting timestamp is independent of the server timezone
+    $timestamp = strtotime($date.' UTC');
+    if ($timestamp === false) {
+        $timestamp = strtotime($date);
+    }
     if ($timestamp === false) {
         return 0;
     }
 
-    return $timestamp + date('Z');
+    return $timestamp;
 }
 
 function acym_getTimeFromCMSDate($date)
 {
+    // Parse the date in the CMS timezone so it gets the offset in effect on that day, not today's one (DST changes)
+    if (!empty($date)) {
+        try {
+            //We replace the . with : WordPress give format like UTC+5.45, but we want something like UTC+5:45
+            $dateTime = new DateTime((string)$date, new DateTimeZone(str_replace('.', ':', (string)acym_getCMSConfig('offset'))));
+            // Before 1970 timezones use local mean time offsets (e.g. 0000-00-00 null dates), keep the legacy offset there
+            if ($dateTime->getTimestamp() >= 0) {
+                return $dateTime->getTimestamp();
+            }
+        } catch (Throwable $e) {
+            // Unparsable date or timezone: fall back to the legacy conversion below
+        }
+    }
+
     return acym_getTimeFromUTCDate($date) - acym_getTimeOffsetCMS();
 }
 
@@ -304,14 +337,14 @@ function acym_getTime($date)
     return acym_getTimeFromCMSDate($date);
 }
 
-function acym_date($time = 'now', $format = null, bool $useTz = true, bool $translate = true): string
+function acym_date($date = 'now', $format = null, bool $useTz = true, bool $translate = true): string
 {
-    if ($time === 'now') {
-        $time = time();
+    if ($date === 'now') {
+        $date = time();
     }
 
-    if (is_numeric($time)) {
-        $time = acym_dateTimeCMS($time);
+    if (is_numeric($date)) {
+        $date = acym_dateTimeCMS($date);
     }
 
     if (!$format || (strpos($format, 'ACYM_DATE_FORMAT') !== false && acym_translation($format) == $format)) {
@@ -321,8 +354,9 @@ function acym_date($time = 'now', $format = null, bool $useTz = true, bool $tran
         $format = acym_translation($format);
     }
 
+    //Don't use timezone
     if ($useTz === false) {
-        $date = new DateTime($time);
+        $date = new DateTime($date);
 
         if ($translate) {
             return acym_translateDate($date->format($format));
@@ -330,18 +364,22 @@ function acym_date($time = 'now', $format = null, bool $useTz = true, bool $tran
             return $date->format($format);
         }
     } else {
+        //We replace the . with : WordPress give format like UTC+5.45, but we want something like UTC+5:45
         $cmsOffset = str_replace('.', ':', acym_getCMSConfig('offset'));
 
         $timezone = new DateTimeZone($cmsOffset);
+        $timestamp = strtotime($date.' UTC');
 
         if (!is_numeric($cmsOffset)) {
-            $cmsOffset = $timezone->getOffset(new DateTime());
+            // Use the offset in effect on that date, not today's one (DST changes). Same pre-1970 rule as acym_getTimeFromCMSDate
+            $cmsOffset = $timezone->getOffset(new DateTime($timestamp !== false && $timestamp >= 0 ? '@'.$timestamp : 'now'));
         }
 
+        // $date is a UTC date string: apply the CMS timezone offset then format in UTC so the server timezone never shifts the displayed result
         if ($translate) {
-            return acym_translateDate(date($format, strtotime($time) + $cmsOffset));
+            return acym_translateDate(gmdate($format, $timestamp + $cmsOffset));
         } else {
-            return date($format, strtotime($time) + $cmsOffset);
+            return gmdate($format, $timestamp + $cmsOffset);
         }
     }
 }

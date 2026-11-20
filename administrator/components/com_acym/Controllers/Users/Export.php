@@ -9,11 +9,13 @@ use AcyMailing\Classes\UserClass;
 use AcyMailing\Controllers\SegmentsController;
 use AcyMailing\Helpers\AutomationHelper;
 use AcyMailing\Helpers\EncodingHelper;
-use AcyMailing\Helpers\EntitySelectHelper;
 use AcyMailing\Helpers\ExportHelper;
 
 trait Export
 {
+    /**
+     * Export page where the user selects the export option
+     */
     public function export(): void
     {
         acym_setVar('layout', 'export');
@@ -47,18 +49,15 @@ trait Export
 
         $fields = acym_getColumns('user');
 
+        // Never expose sensitive fields in the export UI
+        $fields = array_diff($fields, ['key', 'id']);
+
+        // Get custom fields and exclude name and email as we already have them
         $fieldClass = new FieldClass();
         $customFields = $fieldClass->getAll();
 
-        $entityHelper = new EntitySelectHelper();
         $encodingHelper = new EncodingHelper();
         $userClass = new UserClass();
-
-        if ($preselectList) {
-            $entitySelect = $entityHelper->entitySelect('list', ['join' => 'join_lists-'.implode(',', $checkedElements)], $entityHelper->getColumnsForList('lists.list_id', true));
-        } else {
-            $entitySelect = $entityHelper->entitySelect('list', ['join' => ''], $entityHelper->getColumnsForList('', true));
-        }
 
         $data = [
             'lists' => $lists,
@@ -67,7 +66,6 @@ trait Export
             'customfields' => $customFields,
             'coreFields' => [1, 2, $fieldClass->getLanguageFieldId()],
             'isPreselectedList' => $preselectList,
-            'entitySelect' => $entitySelect,
             'exportListStatus' => $filtersListing['list_status'],
             'encodingHelper' => $encodingHelper,
             'userClass' => $userClass,
@@ -78,11 +76,15 @@ trait Export
         parent::display($data);
     }
 
+    /**
+     * This method downloads the exported file directly
+     */
     public function doexport(): void
     {
         acym_checkToken();
         acym_increasePerf();
 
+        // Get passed data and check if we have everything we need
         $usersToExport = acym_getVar('string', 'export_users-to-export', 'all');
         $selectedLists = acym_getVar('string', 'acym__entity_select__selected', '[]');
         $listsToExport = json_decode(empty($selectedLists) ? '[]' : $selectedLists, true);
@@ -105,6 +107,7 @@ trait Export
             acym_arrayToInteger($selectedUsersArray);
         }
 
+        // Make sure the user selected fields and didn't inject something
         $fieldsToExport = acym_getVar('array', 'export_fields', []);
         if (empty($fieldsToExport)) {
             acym_setVar('elements_checked', empty($selectedUsersArray) ? [] : $selectedUsersArray);
@@ -115,6 +118,10 @@ trait Export
         $tableFields = acym_getColumns('user');
         $fieldClass = new FieldClass();
         $customFields = $fieldClass->getAll();
+
+        $forbiddenFields = ['key', 'id'];
+        $fieldsToExport = array_diff($fieldsToExport, $forbiddenFields);
+        $tableFields = array_diff($tableFields, $forbiddenFields);
 
         $customFieldsToExport = [];
         $specialFieldsToExport = [];
@@ -129,9 +136,6 @@ trait Export
         }
 
         $notAllowedFields = array_diff($fieldsToExport, $tableFields);
-        if (in_array('id', $fieldsToExport)) {
-            $notAllowedFields[] = 'id';
-        }
         if (!empty($notAllowedFields)) {
             $this->exportError(acym_translationSprintf('ACYM_NOT_ALLOWED_FIELDS', implode(', ', $notAllowedFields), implode(', ', $tableFields)));
         }
@@ -144,6 +148,7 @@ trait Export
             $separator = 'comma';
         }
 
+        // Save the selected options for the next time
         $newConfig = [
             'export_separator' => $separator,
             'export_charset' => $charset,
@@ -155,6 +160,7 @@ trait Export
         }
         $this->config->saveConfig($newConfig);
 
+        // Prepare the export query
         foreach ($fieldsToExport as $oneField) {
             acym_secureDBColumn($oneField);
         }
@@ -232,12 +238,16 @@ trait Export
             $query .= ' WHERE ('.implode(') AND (', $where).')';
         }
 
+        // We have all we need for the export, prepare the headers for the download
         $exportHelper = new ExportHelper();
         $exportHelper->exportCSV($query, $fieldsToExport, $customFieldsToExport, $specialFieldsToExport, $realSeparators[$separator], $charset, '', $flagSegment);
 
         exit;
     }
 
+    /**
+     * Aborts export and displays an error message
+     */
     private function exportError(string $message): void
     {
         acym_enqueueMessage($message, 'error', 0);

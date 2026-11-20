@@ -1,4 +1,5 @@
 <?php
+defined('_JEXEC') || die('Restricted Access');
 
 use Joomla\CMS\Factory;
 
@@ -16,6 +17,7 @@ if (version_compare(PHP_VERSION, '7.4.0', '<')) {
     }
     acym_loadLanguage();
 
+    //Set the debug if the Joomla debug is ON
     if (acym_isDebug()) acym_displayErrors();
 
     global $Itemid;
@@ -34,6 +36,7 @@ if (version_compare(PHP_VERSION, '7.4.0', '<')) {
     $controllerNamespace = 'AcyMailing\\FrontControllers\\'.ucfirst($ctrl).'Controller';
 
     if (!class_exists($controllerNamespace)) {
+        //We redirect to the homepage...
         acym_redirect(acym_rootURI());
 
         return;
@@ -41,6 +44,7 @@ if (version_compare(PHP_VERSION, '7.4.0', '<')) {
 
     $controller = new $controllerNamespace();
     if (empty($controller)) {
+        //We redirect to the homepage...
         acym_redirect(acym_rootURI());
 
         return;

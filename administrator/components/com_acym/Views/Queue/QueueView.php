@@ -4,6 +4,9 @@ namespace AcyMailing\Views\Queue;
 
 use AcyMailing\Core\AcymView;
 
+/**
+ * Class QueueViewQueue
+ */
 class QueueView extends AcymView
 {
     public function __construct()
@@ -14,6 +17,9 @@ class QueueView extends AcymView
             'campaigns' => 'ACYM_MAILS',
         ];
 
+        if (acym_level(ACYM_ESSENTIAL)) {
+            $this->steps['scheduled'] = 'ACYM_SCHEDULED';
+        }
 
         $this->steps['detailed'] = 'ACYM_QUEUE_DETAILED';
     }

@@ -2,6 +2,10 @@
 
 use AcyMailing\Helpers\HeaderHelper;
 
+/**
+ * @param array|string $message The message to display
+ * @param string       $type    The type (success, error, warning, info, message, notice)
+ */
 function acym_enqueueMessage($message, string $type = 'success', bool $addNotification = true, array $addDashboardNotification = [], bool $addHeaderNotification = true): void
 {
     $type = str_replace(['notice', 'message'], ['info', 'success'], $type);
@@ -54,6 +58,7 @@ function acym_enqueueMessage($message, string $type = 'success', bool $addNotifi
     if (in_array($type, $handledTypes) && $addHeaderNotification) {
         $acyapp = acym_getGlobal('app');
 
+        // Display the translated text
         if (ACYM_J30) {
             $type = str_replace(
                 ['info', 'success'],

@@ -5,6 +5,7 @@ namespace AcyMailing\Controllers\Stats;
 use AcyMailing\Classes\CampaignClass;
 use AcyMailing\Classes\MailClass;
 use AcyMailing\Classes\MailStatClass;
+use AcyMailing\Classes\StatsCacheClass;
 use AcyMailing\Classes\UrlClickClass;
 use AcyMailing\Classes\UserStatClass;
 use AcyMailing\Helpers\ExportHelper;
@@ -27,7 +28,6 @@ trait GlobalStats
         $this->prepareOpenTimeChart($data);
         $this->preparecharts($data);
         $this->prepareListReceivers($data);
-        $this->prepareDefaultRoundCharts($data);
         $this->prepareDefaultLineChart($data);
         $this->prepareDefaultDevicesChart($data);
         $this->prepareDefaultBrowsersChart($data);
@@ -73,34 +73,20 @@ trait GlobalStats
             $attributes['data-selected'] = implode(',', $this->selectedMailIds);
         }
 
-        $data['mail_filter'] = acym_selectMultiple(
-            [],
-            'mail_ids',
-            [],
-            $attributes
-        );
-
-        $data['emailVersionsFilters'] = '';
+        $data['mail_filter_options'] = $attributes;
+        $data['emailVersionsFilters'] = [];
 
         if (!empty($data['emailVersions'])) {
-            $data['emailVersionsFilters'] = acym_select(
-                $data['emailVersions'],
-                'mail_id_version',
-                $this->selectedMailIds[0],
-                [
-                    'class' => 'acym__select acym__stats__select__language',
-                ]
-            );
+            $data['emailVersionsFilters'] = [
+                'options' => $data['emailVersions'],
+                'mailId' => $this->selectedMailIds[0],
+            ];
         }
         if (!empty($data['emailTranslations'])) {
-            $data['emailVersionsFilters'] = acym_select(
-                $data['emailTranslations'],
-                'mail_id_version',
-                $this->selectedMailIds[0],
-                [
-                    'class' => 'acym__select acym__stats__select__language',
-                ]
-            );
+            $data['emailVersionsFilters'] = [
+                'options' => $data['emailTranslations'],
+                'mailId' => $this->selectedMailIds[0],
+            ];
         }
     }
 
@@ -157,74 +143,38 @@ trait GlobalStats
         $data['url_click_map_email'] = ACYM_CSS.'click_map.min.css?v='.filemtime(ACYM_MEDIA.'css'.DS.'click_map.min.css');
     }
 
-    public function prepareDefaultRoundCharts(array &$data): void
-    {
-        $charts = [
-            'delivery' => [
-                'percentage' => 95,
-                'text' => 'ACYM_SUCCESSFULLY_SENT',
-            ],
-            'open' => [
-                'percentage' => 25,
-                'text' => 'ACYM_OPEN_RATE',
-            ],
-            'click' => [
-                'percentage' => 10,
-                'text' => 'ACYM_CLICK_RATE',
-            ],
-            'fail' => [
-                'percentage' => 2,
-                'text' => 'ACYM_BOUNCE_RATE',
-            ],
-            'unsub' => [
-                'percentage' => 3,
-                'text' => 'ACYM_UNSUBSCRIBE',
-            ],
-        ];
-
-        $data['example_round_chart'] = '';
-        foreach ($charts as $type => $oneChart) {
-            if ($type == 'unsub' && empty($this->selectedMailIds)) continue;
-            $data['example_round_chart'] .= '<div class="cell acym__stats__donut__one-chart">';
-            $data['example_round_chart'] .= acym_roundChart(
-                $oneChart['percentage'],
-                $type,
-                '',
-                acym_translation($oneChart['text'])
-            );
-            $data['example_round_chart'] .= '</div>';
-        }
-    }
-
     public function prepareDefaultLineChart(array &$data): void
     {
-        $dataMonth = [];
-        $dataMonth['Jan 18'] = ['open' => '150', 'click' => '40'];
-        $dataDay = [];
-        $dataDay['23 Jan'] = ['open' => '150', 'click' => '40'];
-        $dataHour = [];
-        $dataHour['23 Jan 08:00'] = ['open' => '25', 'click' => '10'];
-        $dataHour['23 Jan 09:00'] = ['open' => '50', 'click' => '10'];
-        $dataHour['23 Jan 10:00'] = ['open' => '16', 'click' => '10'];
-        $dataHour['23 Jan 11:00'] = ['open' => '59', 'click' => '10'];
-        $data['example_line_chart'] = acym_lineChart($dataMonth, $dataDay, $dataHour);
+        $data['example_line_chart'] = [
+            'month' => [
+                'Jan 18' => ['open' => '150', 'click' => '40'],
+            ],
+            'day' => [
+                '23 Jan' => ['open' => '150', 'click' => '40'],
+            ],
+            'hour' => [
+                '23 Jan' => ['open' => '150', 'click' => '40'],
+                '23 Jan 08:00' => ['open' => '25', 'click' => '10'],
+                '23 Jan 09:00' => ['open' => '50', 'click' => '10'],
+                '23 Jan 10:00' => ['open' => '16', 'click' => '10'],
+                '23 Jan 11:00' => ['open' => '59', 'click' => '10'],
+            ],
+        ];
     }
 
     public function prepareDefaultDevicesChart(array &$data): void
     {
-        $defaultData = [
+        $data['example_devices_chart'] = [
             'ACYM_MOBILE' => 25662,
             'ACYM_DESKTOP' => 12471,
             'ACYM_OTHER' => 3548,
             'ACYM_UNKNOWN' => 6213,
         ];
-
-        $data['example_devices_chart'] = acym_pieChart($defaultData, '', acym_translation('ACYM_DEVICES'));
     }
 
     public function prepareDefaultBrowsersChart(array &$data): void
     {
-        $exampleData = [
+        $data['example_source_chart'] = [
             'Apple Mail' => 15835,
             'Google Chrome' => 13375,
             'Safari' => 2667,
@@ -234,8 +184,6 @@ trait GlobalStats
             'ACYM_OTHER' => 4775,
             'ACYM_UNKNOWN' => 6123,
         ];
-
-        $data['example_source_chart'] = acym_pieChart($exampleData, '', acym_translation('ACYM_OPENED_WITH'));
     }
 
     public function setDataForChartLine(): void
@@ -265,7 +213,7 @@ trait GlobalStats
         $statsCampaignSelected = new \stdClass();
         $this->prepareLineChart($statsCampaignSelected, $mailIds, $newStart, $newEnd);
 
-        echo acym_lineChart($statsCampaignSelected->month, $statsCampaignSelected->day, $statsCampaignSelected->hour, true);
+        acym_lineChart($statsCampaignSelected->month, $statsCampaignSelected->day, $statsCampaignSelected->hour, true);
         exit;
     }
 
@@ -274,19 +222,51 @@ trait GlobalStats
         $opens = [];
         foreach ($campaignOpens as $one) {
             if (!empty($one->open_date)) {
-                $opens[acym_date(acym_getTime($one->open_date), $dateCode)] = $one->open;
+                $opens[acym_date(acym_getTimeFromUTCDate($one->open_date), $dateCode)] = $one->open;
             }
         }
 
         $clicks = [];
         foreach ($campaignClicks as $one) {
             if (!empty($one->date_click)) {
-                $clicks[acym_date(acym_getTime($one->date_click), $dateCode)] = $one->click;
+                $clicks[acym_date(acym_getTimeFromUTCDate($one->date_click), $dateCode)] = $one->click;
             }
         }
 
-        $begin = new \DateTime(empty($campaignClicks) ? $campaignOpens[0]->open_date : min([$campaignOpens[0]->open_date, $campaignClicks[0]->date_click]));
-        $end = new \DateTime(empty($campaignClicks) ? end($campaignOpens)->open_date : max([end($campaignOpens)->open_date, end($campaignClicks)->date_click]));
+        $startDate = $campaignOpens[0]->open_date ?? null;
+        if (!empty($campaignClicks) && !empty($campaignClicks[0]->date_click)) {
+            $clickDate = $campaignClicks[0]->date_click;
+            if (!empty($startDate)) {
+                $startDate = min([$startDate, $clickDate]);
+            } else {
+                $startDate = $clickDate;
+            }
+        }
+
+        $lastOpen = empty($campaignOpens) ? null : end($campaignOpens);
+        $endDate = $lastOpen->open_date ?? null;
+        if (!empty($campaignClicks)) {
+            $lastClick = end($campaignClicks);
+            $clickDate = $lastClick->date_click ?? null;
+            if (!empty($endDate) && !empty($clickDate)) {
+                $endDate = max([$endDate, $clickDate]);
+            } elseif (!empty($clickDate)) {
+                $endDate = $clickDate;
+            }
+        }
+
+        if (empty($startDate) || empty($endDate)) {
+            return [];
+        }
+
+        // Apply timezone for chart by hour
+        if ($modifier === 'min') {
+            $startDate = acym_date(acym_getTimeFromUTCDate($startDate), 'Y-m-d H:i:s');
+            $endDate = acym_date(acym_getTimeFromUTCDate($endDate), 'Y-m-d H:i:s');
+        }
+
+        $begin = new \DateTime($startDate);
+        $end = new \DateTime($endDate);
 
         $end->modify('+1 '.$modifier);
 
@@ -310,23 +290,36 @@ trait GlobalStats
 
     public function prepareLineChart(object &$statsCampaignSelected, array $mailIdsOfCampaign, string $newStart = '', string $newEnd = ''): void
     {
-        $campaignClass = new CampaignClass();
         $statsCampaignSelected->hasStats = true;
+        $anonymousStats = !empty($this->config->get('anonymous_stats', 0));
+        $isGlobal = empty($mailIdsOfCampaign) && empty($newStart) && empty($newEnd);
 
-        $campaignOpenByMonth = $campaignClass->getOpenByMonth($mailIdsOfCampaign, $newStart, $newEnd);
-        $campaignOpenByDay = $campaignClass->getOpenByDay($mailIdsOfCampaign, $newStart, $newEnd);
-        $campaignOpenByHour = $campaignClass->getOpenByHour($mailIdsOfCampaign, $newStart, $newEnd);
+        //We get the opening by month, day, hour
+        if ($anonymousStats) {
+            $mailStatClass = new MailStatClass();
+            $campaignOpenByMonth = $mailStatClass->getAnonOpensByFormat($mailIdsOfCampaign, '%Y-%m', $newStart, $newEnd);
+            $campaignOpenByDay = $mailStatClass->getAnonOpensByFormat($mailIdsOfCampaign, '%Y-%m-%d', $newStart, $newEnd);
+            $campaignOpenByHour = $mailStatClass->getAnonOpensByFormat($mailIdsOfCampaign, '%Y-%m-%d %H:00:00', $newStart, $newEnd);
+        } else {
+            $campaignClass = new CampaignClass();
+            $campaignOpenByMonth = $this->getCachedGlobalStat('open_by_month', $isGlobal, fn() => $campaignClass->getOpenByMonth($mailIdsOfCampaign, $newStart, $newEnd));
+            $campaignOpenByDay = $this->getCachedGlobalStat('open_by_day', $isGlobal, fn() => $campaignClass->getOpenByDay($mailIdsOfCampaign, $newStart, $newEnd));
+            $campaignOpenByHour = $this->getCachedGlobalStat('open_by_hour', $isGlobal, fn() => $campaignClass->getOpenByHour($mailIdsOfCampaign, $newStart, $newEnd));
+        }
 
-        if (empty($campaignOpenByMonth) || empty($campaignOpenByDay) || empty($campaignOpenByHour)) {
+        $urlClickClass = new UrlClickClass();
+        $campaignClickByMonth = $this->getCachedGlobalStat('click_by_month', $isGlobal, fn() => $urlClickClass->getAllClickByMailMonth($mailIdsOfCampaign, $newStart, $newEnd));
+        $campaignClickByDay = $this->getCachedGlobalStat('click_by_day', $isGlobal, fn() => $urlClickClass->getAllClickByMailDay($mailIdsOfCampaign, $newStart, $newEnd));
+        $campaignClickByHour = $this->getCachedGlobalStat('click_by_hour', $isGlobal, fn() => $urlClickClass->getAllClickByMailHour($mailIdsOfCampaign, $newStart, $newEnd));
+
+        // In anonymous mode a click doesn't register an open, and in any mode a link can be clicked without the open pixel firing: gating on opens alone wrongly hid the whole chart.
+        $hasOpens = !empty($campaignOpenByMonth) && !empty($campaignOpenByDay) && !empty($campaignOpenByHour);
+        $hasClicks = !empty($campaignClickByMonth) && !empty($campaignClickByDay) && !empty($campaignClickByHour);
+        if (!$hasOpens && !$hasClicks) {
             $statsCampaignSelected->hasStats = false;
 
             return;
         }
-
-        $urlClickClass = new UrlClickClass();
-        $campaignClickByMonth = $urlClickClass->getAllClickByMailMonth($mailIdsOfCampaign, $newStart, $newEnd);
-        $campaignClickByDay = $urlClickClass->getAllClickByMailDay($mailIdsOfCampaign, $newStart, $newEnd);
-        $campaignClickByHour = $urlClickClass->getAllClickByMailHour($mailIdsOfCampaign, $newStart, $newEnd);
 
         $statsCampaignSelected->month = $this->getValues('day', 'P1M', $campaignOpenByMonth, $campaignClickByMonth, 'Y-m');
         $statsCampaignSelected->day = $this->getValues('hour', 'P1D', $campaignOpenByDay, $campaignClickByDay, 'Y-m-d');
@@ -334,13 +327,29 @@ trait GlobalStats
 
         $allHour = array_keys($statsCampaignSelected->hour);
 
+        //those are the dates when the first was open and the last was open
         $statsCampaignSelected->startEndDateHour = [];
-        $statsCampaignSelected->startEndDateHour['start'] = $allHour[0];
-        $statsCampaignSelected->startEndDateHour['end'] = end($allHour);
+        if (!empty($allHour)) {
+            $statsCampaignSelected->startEndDateHour['start'] = $allHour[0];
+            $statsCampaignSelected->startEndDateHour['end'] = end($allHour);
+        }
+    }
+
+    private function getCachedGlobalStat(string $name, bool $isGlobal, callable $compute)
+    {
+        if (!$isGlobal) {
+            return $compute();
+        }
+
+        $statsCacheClass = new StatsCacheClass();
+
+        return $statsCacheClass->getOrCompute($name, $compute);
     }
 
     public function exportGlobal(): void
     {
+        acym_checkToken();
+
         $exportType = acym_getVar('string', 'export_type', 'charts');
 
         $functionName = 'exportGlobal'.ucfirst($exportType);
@@ -358,7 +367,12 @@ trait GlobalStats
     public function prepareOpenTimeChart(array &$data): void
     {
         $userStatClass = new UserStatClass();
-        $statsDB = $userStatClass->getOpenTimeStats($this->selectedMailIds);
+        if (!empty($this->config->get('anonymous_stats', 0))) {
+            $mailStatClass = new MailStatClass();
+            $statsDB = $mailStatClass->getAnonOpenTimeStats($this->selectedMailIds);
+        } else {
+            $statsDB = $this->getCachedGlobalStat('open_time', empty($this->selectedMailIds), fn() => $userStatClass->getOpenTimeStats($this->selectedMailIds));
+        }
 
         if (empty($statsDB['total_open'])) {
             $data['openTime'] = $userStatClass->getDefaultStat();
@@ -366,6 +380,7 @@ trait GlobalStats
 
             return;
         }
+
         $data['empty_open'] = false;
 
         $stats = [];
@@ -373,7 +388,7 @@ trait GlobalStats
         for ($day = 0; $day < 7; $day++) {
             $stats[$day] = [];
             for ($hour = 0; $hour < 8; $hour++) {
-                if (empty($statsDB['stats'][$day.'_'.$hour]) || empty($statsDB['total_open'])) {
+                if (empty($statsDB['stats'][$day.'_'.$hour])) {
                     $percentage = 0;
                 } else {
                     $percentage = ($statsDB['stats'][$day.'_'.$hour]->open_total * 100) / $statsDB['total_open'];
@@ -387,17 +402,14 @@ trait GlobalStats
 
     public function prepareStatByList(array &$data): void
     {
-        $mailid = (count(array_unique($data['selectedMailid'])) != 1) ? 0 : $data['selectedMailid'][0];
+        $selectedMailIds = array_unique($data['selectedMailid']);
+        $mailid = count($selectedMailIds) !== 1 ? 0 : (int)reset($selectedMailIds);
 
         if (empty($mailid)) {
             return;
         }
 
-        $mailSelected = $this->getVarFiltersListing('int', 'mail_id_language', $mailid);
-
-        $mailClass = new MailClass();
-        $mail = $mailClass->getOneById($mailSelected);
-        $mainMailId = empty($mail->parent_id) ? $mail->id : $mail->parent_id;
+        $mailSelected = (int)$this->getVarFiltersListing('int', 'mail_id_language', $mailid);
 
         $data['lists'] = [];
         $data['emailsSent'] = [];
@@ -408,20 +420,37 @@ trait GlobalStats
         $data['listsStats'] = [];
         $data['userPerList'] = [];
 
+        $mailClass = new MailClass();
+        $mail = $mailClass->getOneById($mailSelected);
+
+        if (empty($mail) || !in_array($mailid, [$mail->id, $mail->parent_id])) {
+            $mailSelected = $mailid;
+            $mail = $mailClass->getOneById($mailSelected);
+        }
+
+        if (empty($mail)) {
+            return;
+        }
+
+        $mainMailId = empty($mail->parent_id) ? $mail->id : $mail->parent_id;
+
+        // get lists from the selected campaign
         $query = 'SELECT l.id, l.name, l.color FROM #__acym_list l';
         $query .= ' JOIN #__acym_mail_has_list ml on l.id = ml.list_id';
-        $query .= ' WHERE ml.mail_id = '.$mainMailId;
+        $query .= ' WHERE ml.mail_id = '.intval($mainMailId);
 
         $data['lists'] = acym_loadObjectList($query, 'id');
         $listIds = implode(',', array_keys($data['lists']));
 
         if (!empty($listIds)) {
+            //get nbSent, nbOpen, nbBounce, nbUnsubscribe
             $query = 'SELECT ul.list_id, SUM(us.sent) as nbSent, SUM(IF(us.open >= 1, 1, 0)) as nbOpen, SUM(us.bounce) as nbBounce, SUM(us.unsubscribe) as nbUnsub from #__acym_user_has_list ul';
             $query .= ' JOIN #__acym_user_stat us on ul.user_id = us.user_id';
             $query .= ' WHERE ul.list_id in ('.$listIds.') AND us.mail_id = '.$mailSelected;
             $query .= ' GROUP BY ul.list_id;';
             $data['listsStats'] = acym_loadObjectList($query, 'list_id');
 
+            //get nbClick
             $query = 'SELECT ul.list_id, COUNT(uc.click) as nbClick';
             $query .= ' FROM #__acym_user_has_list ul ';
             $query .= ' JOIN #__acym_url_click uc on ul.user_id =  uc.user_id';
@@ -430,6 +459,7 @@ trait GlobalStats
 
             $data['nbClick'] = acym_loadObjectList($query, 'list_id');
 
+            //get nbUser per list
             $query = 'SELECT ul.list_id, COUNT(ul.user_id) as nbUser';
             $query .= ' FROM #__acym_user_has_list ul';
             $query .= ' JOIN #__acym_user_stat us ON ul.user_id = us.user_id';
@@ -439,6 +469,7 @@ trait GlobalStats
             $data['userPerList'] = acym_loadObjectList($query, 'list_id');
         }
 
+        //format data for barChart
         foreach ($data['listsStats'] as $listId => $item) {
             $nbSent = empty($item->nbSent) ? 1 : $item->nbSent;
 
@@ -466,6 +497,8 @@ trait GlobalStats
 
         foreach ($data['userPerList'] as $listId => $item) {
             $nbUser = $item->nbUser;
+            // we can't provide lists and their colors if there is no click,
+            // so we initialize the values with $data['lists'] to display lists with no click rather than nothing
             $data['click'][$listId] = ['label' => $data['lists'][$listId]->name, 'value' => 0, 'color' => $data['lists'][$listId]->color];
 
             if ($nbUser > 0 && !empty($data['nbClick'][$listId]->nbClick)) {
@@ -526,8 +559,13 @@ trait GlobalStats
 
     private function prepareDevicesStats(array &$data): void
     {
-        $campaignClass = new CampaignClass();
-        $devicesCampaign = $campaignClass->getDevicesWithCountByMailId($this->selectedMailIds);
+        if (!empty($this->config->get('anonymous_stats', 0))) {
+            $mailStatClass = new MailStatClass();
+            $devicesCampaign = $mailStatClass->getAnonDevices($this->selectedMailIds);
+        } else {
+            $campaignClass = new CampaignClass();
+            $devicesCampaign = $this->getCachedGlobalStat('devices', empty($this->selectedMailIds), fn() => $campaignClass->getDevicesWithCountByMailId($this->selectedMailIds));
+        }
 
         $defaultDataDevices = [
             'ACYM_MOBILE' => 0,
@@ -562,8 +600,13 @@ trait GlobalStats
 
     private function prepareOpenSourcesStats(array &$data): void
     {
-        $userStatClass = new UserStatClass();
-        $openedFromStats = $userStatClass->getOpenSourcesStats($this->selectedMailIds);
+        if (!empty($this->config->get('anonymous_stats', 0))) {
+            $mailStatClass = new MailStatClass();
+            $openedFromStats = $mailStatClass->getAnonOpenSources($this->selectedMailIds);
+        } else {
+            $userStatClass = new UserStatClass();
+            $openedFromStats = $this->getCachedGlobalStat('open_sources', empty($this->selectedMailIds), fn() => $userStatClass->getOpenSourcesStats($this->selectedMailIds));
+        }
 
         $data['openedWith'] = [];
         foreach ($openedFromStats as $oneSource) {
@@ -593,6 +636,7 @@ trait GlobalStats
         $campaignClass = new CampaignClass();
         $urlClickClass = new UrlClickClass();
 
+        //For the total opening, the doughnut chart
         $data['mail']->totalMail = $data['mail']->sent + $data['mail']->fail;
         $data['mail']->percentageSent = empty($data['mail']->totalMail) ? 0 : number_format(($data['mail']->sent * 100) / $data['mail']->totalMail, 2);
         $data['mail']->allSent = empty($data['mail']->totalMail)
@@ -603,26 +647,45 @@ trait GlobalStats
                 $data['mail']->totalMail
             );
 
-        $openRateCampaign = empty($this->selectedMailIds) ? $campaignClass->getOpenRateAllCampaign() : $campaignClass->getOpenRateCampaigns($this->selectedMailIds);
-        $data['mail']->percentageOpen = empty($openRateCampaign->sent) ? 0 : number_format(($openRateCampaign->open_unique * 100) / $openRateCampaign->sent, 2);
-        $data['mail']->allOpen = empty($openRateCampaign->sent)
-            ? acym_translationSprintf('ACYM_X_MAIL_OPENED_OF_X', 0, 0)
-            : acym_translationSprintf(
-                'ACYM_X_MAIL_OPENED_OF_X',
-                $openRateCampaign->open_unique,
-                $openRateCampaign->sent
-            );
+        // Anonymized mode has no per-subscriber data: show total opens/clicks instead of unique counts
+        $anonymousStats = !empty($this->config->get('anonymous_stats', 0));
+        $data['anonymousStats'] = $anonymousStats;
 
-        $clickRateCampaign = $urlClickClass->getNumberUsersClicked($this->selectedMailIds);
-        $data['mail']->percentageClick = empty($data['mail']->sent) ? 0 : number_format(($clickRateCampaign * 100) / $data['mail']->sent, 2);
+        if ($anonymousStats) {
+            $cumulatedTotals = $mailStatClass->getCumulatedStatsByMailIds($this->selectedMailIds);
+            $openCount = (int)($cumulatedTotals->open ?? 0);
+            $clickCount = (int)($cumulatedTotals->click_unique ?? 0);
+            $openSent = (int)$data['mail']->sent;
+        } else {
+            $openRateCampaign = empty($this->selectedMailIds) ? $campaignClass->getOpenRateAllCampaign() : $campaignClass->getOpenRateCampaigns($this->selectedMailIds);
+            $openCount = (int)$openRateCampaign->open_unique;
+            $openSent = (int)$openRateCampaign->sent;
+            $clickCount = $this->getCachedGlobalStat('users_clicked', empty($this->selectedMailIds), fn() => $urlClickClass->getNumberUsersClicked($this->selectedMailIds));
+        }
+
+        //open rate
+        // In anonymous mode $openCount is a total number of opens (not a unique-user count), so use a wording that reflects the total number of times mails were opened
+        $openLabelKey = $anonymousStats ? 'ACYM_X_MAIL_OPENED_TIMES_OF_X' : 'ACYM_X_MAIL_OPENED_OF_X';
+        $data['mail']->openCount = $openCount;
+        // In anonymous mode the count is a total (not a unique), so the rate can exceed 100%: cap it to keep a meaningful percentage
+        $openRate = empty($openSent) ? 0 : ($openCount * 100) / $openSent;
+        $data['mail']->percentageOpen = number_format($anonymousStats ? min($openRate, 100) : $openRate, 2);
+        $data['mail']->allOpen = empty($openSent)
+            ? acym_translationSprintf($openLabelKey, 0, 0)
+            : acym_translationSprintf($openLabelKey, $openCount, $openSent);
+
+        //click rate
+        // In anonymous mode $clickCount is a total (aggregated with user_id = 0), not a unique-user count, so use a wording that reflects total clicks
+        $clickLabelKey = $anonymousStats ? 'ACYM_X_CLICKS_REGISTERED_OF_X' : 'ACYM_X_MAIL_CLICKED_OF_X';
+        $data['mail']->clickCount = $clickCount;
+        // In anonymous mode the count is a total (not a unique), so the rate can exceed 100%: cap it to keep a meaningful percentage
+        $clickRate = empty($data['mail']->sent) ? 0 : ($clickCount * 100) / $data['mail']->sent;
+        $data['mail']->percentageClick = number_format($anonymousStats ? min($clickRate, 100) : $clickRate, 2);
         $data['mail']->allClick = empty($data['mail']->sent)
-            ? acym_translationSprintf('ACYM_X_MAIL_CLICKED_OF_X', 0, 0)
-            : acym_translationSprintf(
-                'ACYM_X_MAIL_CLICKED_OF_X',
-                $clickRateCampaign,
-                $data['mail']->sent
-            );
+            ? acym_translationSprintf($clickLabelKey, 0, 0)
+            : acym_translationSprintf($clickLabelKey, $clickCount, $data['mail']->sent);
 
+        //bounce rate
         $bounceRateCampaign = empty($this->selectedMailIds) ? $campaignClass->getBounceRateAllCampaign() : $campaignClass->getBounceRateCampaigns($this->selectedMailIds);
         $data['mail']->percentageBounce = empty($data['mail']->sent) ? 0 : number_format(($bounceRateCampaign->bounce_unique * 100) / $data['mail']->sent, 2);
         $data['mail']->allBounce = empty($data['mail']->sent)
@@ -634,6 +697,7 @@ trait GlobalStats
             );
 
         if (!empty($this->selectedMailIds)) {
+            //unsubscribe rate
             $mailStat = $mailStatClass->getByMailIds($this->selectedMailIds);
             $data['mail']->allUnsub = 0;
             $data['mail']->percentageUnsub = 0;
@@ -669,8 +733,8 @@ trait GlobalStats
     private function prepareLinksDetailsListing(array &$data): void
     {
         $data['search'] = $this->getVarFiltersListing('string', 'links_details_search', '');
-        $data['ordering'] = $this->getVarFiltersListing('string', 'links_details_ordering', 'id');
-        $data['orderingSortOrder'] = $this->getVarFiltersListing('string', 'links_details_ordering_sort_order', 'desc');
+        $data['ordering'] = $this->getVarFiltersListing('cmd', 'links_details_ordering', 'id');
+        $data['orderingSortOrder'] = $this->getVarFiltersListing('cmd', 'links_details_ordering_sort_order', 'desc');
 
         if (empty($this->selectedMailIds)) return;
 
@@ -693,6 +757,7 @@ trait GlobalStats
 
         $this->decode($urlClicks['links_details']);
 
+        // Prepare the pagination
         $pagination->setStatus((int)$urlClicks['total']->total, $page, $detailedStatsPerPage);
 
         $data['pagination'] = $pagination;
@@ -720,11 +785,9 @@ trait GlobalStats
         $data['page_title'] = false;
         $timeLinechart = acym_getVar('string', 'time_linechart', 'month');
 
-
         $this->prepareMailFilter($data);
         $this->prepareClickStats($data);
         $this->preparecharts($data);
-        $this->prepareDefaultRoundCharts($data);
         $this->prepareDefaultLineChart($data);
         $this->prepareDefaultDevicesChart($data);
         $this->prepareDefaultBrowsersChart($data);
@@ -871,8 +934,10 @@ trait GlobalStats
         }
 
         if ($isPercentage) {
+            // For totalSubscribers: percentage variation
             return round((($newValue - $oldValue) / $oldValue) * 100, 2);
         } else {
+            // For other stats: absolute difference
             return round($newValue - $oldValue, 2);
         }
     }

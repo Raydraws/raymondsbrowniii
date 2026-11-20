@@ -65,6 +65,7 @@ class AcymRouter extends RouterBase
     {
         $segments = [];
 
+        // We don't SEF these links
         if (isset($query['ctrl']) && in_array($query['ctrl'], $this->pagesNotSef)) {
             return $segments;
         }
@@ -90,6 +91,7 @@ class AcymRouter extends RouterBase
             unset($query['view']);
             unset($query['layout']);
         } elseif (isset($query['view'])) {
+            // Joomla builds menus like this
             $ctrl = $query['view'];
             unset($query['view']);
 
@@ -104,7 +106,7 @@ class AcymRouter extends RouterBase
         }
 
         if ($ctrl === 'archive' && $task === 'view' && !empty($query['id'])) {
-            $segments[] = $this->getMailSEF($query['id']);
+            $segments[] = $this->getMailSEF((int)$query['id']);
             unset($query['id']);
         } else {
             if (!empty($task)) $segments[] = $task;
@@ -116,18 +118,21 @@ class AcymRouter extends RouterBase
         }
 
         if ($ctrl === 'frontlists' && !empty($query['listId'])) {
-            $segments[] = $this->getListSEF($query['listId']);
+            $segments[] = $this->getListSEF((int)$query['listId']);
             unset($query['listId']);
         }
 
         if ($ctrl === 'frontusers' && $task === 'unsubscribe' && !empty($query['mail_id'])) {
-            $segments[] = $this->getMailSEF($query['mail_id']);
+            $segments[] = $this->getMailSEF((int)$query['mail_id']);
             unset($query['mail_id']);
         }
 
         foreach ($query as $name => $value) {
             if (in_array($name, $this->paramsNotSef)) {
                 continue;
+            }
+            if (is_array($value)) {
+                $value = implode(',', $value);
             }
 
             $segments[] = $name.$this->separator.$value;
@@ -211,18 +216,26 @@ class AcymRouter extends RouterBase
         return $vars;
     }
 
-    private function getMailSEF($id): string
+    private function getMailSEF(int $id): string
     {
         $mailClass = new MailClass();
         $mail = $mailClass->getOneById($id);
 
+        if (empty($mail->subject)) {
+            return (string)$id;
+        }
+
         return $id.$this->separator.acym_getAlias($mail->subject);
     }
 
-    private function getListSEF($id): string
+    private function getListSEF(int $id): string
     {
         $listClass = new ListClass();
         $list = $listClass->getOneById($id);
+
+        if (empty($list->name)) {
+            return (string)$id;
+        }
 
         return $id.$this->separator.acym_getAlias($list->name);
     }

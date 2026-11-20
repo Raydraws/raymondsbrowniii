@@ -16,8 +16,8 @@ trait Listing
         $data = [];
         $data['search'] = $this->getVarFiltersListing('string', 'lists_search', '');
         $data['tag'] = $this->getVarFiltersListing('string', 'lists_tag', '');
-        $data['ordering'] = $this->getVarFiltersListing('string', 'lists_ordering', 'id');
-        $data['orderingSortOrder'] = $this->getVarFiltersListing('string', 'lists_ordering_sort_order', 'desc');
+        $data['ordering'] = $this->getVarFiltersListing('cmd', 'lists_ordering', 'id');
+        $data['orderingSortOrder'] = $this->getVarFiltersListing('cmd', 'lists_ordering_sort_order', 'desc');
         $data['status'] = $this->getVarFiltersListing('string', 'lists_status', '');
         $data['allTags'] = $tagClass->getAllTagsByType(TagClass::TYPE_LIST);
         $data['pagination'] = new PaginationHelper();
@@ -54,7 +54,6 @@ trait Listing
             ['data-task' => 'export', 'type' => 'submit', 'data-ctrl' => 'users', 'id' => 'acym__list__export'],
             'download'
         );
-        $toolbarHelper->addOtherContent('<input type="hidden" name="preselectList" value="1" />');
         $toolbarHelper->addButton(acym_translation('ACYM_CREATE'), ['data-task' => 'settings'], 'playlist_add', true);
 
         $data['toolbar'] = $toolbarHelper;
@@ -75,9 +74,11 @@ trait Listing
 
     protected function prepareListsListing(array &$data): void
     {
+        // Prepare the pagination
         $listsPerPage = $data['pagination']->getListLimit();
         $page = $this->getVarFiltersListing('int', 'lists_pagination_page', 1);
 
+        // Get the matching lists
         $matchingLists = $this->getMatchingElementsFromData(
             [
                 'search' => $data['search'],

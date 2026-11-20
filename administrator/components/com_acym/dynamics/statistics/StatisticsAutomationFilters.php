@@ -72,6 +72,7 @@ trait StatisticsAutomationFilters
             $oneUrl->name = acym_translation('ACYM_ANY_URL');
             $oneUrl->url_id = -1;
 
+            //to set ACYM_ANY_URL first
             $urls = array_merge([$oneUrl], $urls);
 
             echo json_encode($urls);
@@ -190,13 +191,19 @@ trait StatisticsAutomationFilters
         $filters['statistics']->option .= '</div>';
 
         $delayType = new DelayType();
-        $delay = $delayType->display(
+        ob_start();
+        $delayType->display(
             '[filters][__numor__][__numand__][statistics][time]',
-            1,
+            0,
             DelayType::TYPE_HOURS_DAYS_WEEKS_MONTHS
         );
+        $delay = ob_get_clean();
+        ob_start();
+        acym_info(['textShownInTooltip' => 'ACYM_IF_SET_0_NO_CONDITION_ON_TIME']);
+        $tooltip = ob_get_clean();
+
         $filters['statistics']->option .= '<div style="display: none" class="cell grid-x acym__filter__stats_time acym_vcenter">
-            <p class="cell margin-bottom-1">'.acym_translation('ACYM_ADVANCED_OPTIONS').':'.acym_info(['textShownInTooltip' => 'ACYM_IF_SET_0_NO_CONDITION_ON_TIME']).' </p>
+            <p class="cell margin-bottom-1">'.acym_escapeHtml(acym_translation('ACYM_ADVANCED_OPTIONS')).':'.$tooltip.' </p>
             '.acym_translationSprintf('ACYM_X_AFTER_MAIL_SENT', $delay).'</div>';
     }
 
@@ -275,7 +282,7 @@ trait StatisticsAutomationFilters
         if (!empty($where)) $query->where[] = $where;
 
         if (!empty($options['time']) && in_array($options['status'], ['opened', 'notopen'])) {
-            if ($options['status'] == 'notopen') {
+            if ($options['status'] === 'notopen') {
                 $query->where[] = $alias.'.open_date IS NULL OR '.$alias.'.open_date >= DATE_ADD('.$alias.'.send_date, INTERVAL '.intval($options['time']).' SECOND)';
             } else {
                 $query->where[] = $alias.'.open_date <= DATE_ADD('.$alias.'.send_date, INTERVAL '.intval($options['time']).' SECOND)';

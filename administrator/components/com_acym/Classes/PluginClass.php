@@ -6,7 +6,7 @@ use AcyMailing\Core\AcymClass;
 
 class PluginClass extends AcymClass
 {
-    private array $plugins;
+    private array $plugins = [];
 
     public function __construct()
     {
@@ -14,23 +14,25 @@ class PluginClass extends AcymClass
 
         $this->table = 'plugin';
         $this->pkey = 'id';
+    }
 
+    public function getPlugins(): array
+    {
         global $acymPluginByFolderName;
         if (empty($acymPluginByFolderName)) {
             $acymPluginByFolderName = $this->getAll('folder_name');
         }
 
         $this->plugins = $acymPluginByFolderName;
-    }
 
-    public function getPlugins(): array
-    {
         return $this->plugins;
     }
 
     public function getOnePluginByFolderName(string $folderName): ?object
     {
-        return $this->plugins[$folderName] ?? null;
+        $plugins = $this->getPlugins();
+
+        return $plugins[$folderName] ?? null;
     }
 
     public function getNotUptoDatePlugins(): array
@@ -49,8 +51,10 @@ class PluginClass extends AcymClass
             return;
         }
 
-        $data = $this->plugins[$plugin->name] ?? null;
+        $plugins = $this->getPlugins();
+        $data = $plugins[$plugin->name] ?? null;
 
+        // Prepare the missing entry in the db
         $newPlugin = new \stdClass();
         $newPlugin->title = $plugin->pluginDescription->name;
         $newPlugin->folder_name = $plugin->name;
@@ -71,7 +75,9 @@ class PluginClass extends AcymClass
                 return;
             }
 
+            // The integration has just been activated and the old addon was installed
 
+            // Remove the old addon's files
             if (file_exists(ACYM_ADDONS_FOLDER_PATH.$plugin->name)) {
                 acym_deleteFolder(ACYM_ADDONS_FOLDER_PATH.$plugin->name);
             }
@@ -103,10 +109,10 @@ class PluginClass extends AcymClass
         $plugin = $this->getOnePluginByFolderName($folderName);
         if (empty($plugin)) return;
 
-        parent::delete($plugin->id);
+        parent::delete([$plugin->id]);
     }
 
-    public function updateAddon(string $addon): ?int
+    public function updateAddon(string $addon, bool $ajax = true): ?int
     {
         $plugin = $this->getOnePluginByFolderName($addon);
 
@@ -115,7 +121,9 @@ class PluginClass extends AcymClass
         }
 
         $pluginClass = new PluginClass();
-        $pluginClass->downloadAddon($addon);
+        if (!empty($pluginClass->downloadAddon($addon, $ajax))) {
+            return null;
+        }
 
         $pluginToSave = new \stdClass();
         $pluginToSave->id = $plugin->id;
@@ -152,7 +160,7 @@ class PluginClass extends AcymClass
             return $this->handleError('ACYM_ISSUE_WHILE_INSTALLING', $ajax);
         }
 
-        if (!unlink($tmpZipDownload)) {
+        if (!acym_deleteFile($tmpZipDownload)) {
             return $this->handleError('ACYM_ERROR_FILE_DELETION', false);
         }
 

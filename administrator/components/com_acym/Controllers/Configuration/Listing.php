@@ -10,7 +10,6 @@ use AcyMailing\Helpers\MailerHelper;
 use AcyMailing\Helpers\TabHelper;
 use AcyMailing\Helpers\ToolbarHelper;
 use AcyMailing\Helpers\UpdatemeHelper;
-use AcyMailing\Core\AcymPlugin;
 use AcyMailing\Types\AclType;
 use AcyMailing\Types\DelayType;
 use AcyMailing\Types\FailActionType;
@@ -21,6 +20,7 @@ trait Listing
     {
         acym_setVar('layout', 'listing');
 
+        // We check if we have to store a token from an OAuth provider
         $this->handleOauthAuthentication();
 
         $data = [];
@@ -35,8 +35,6 @@ trait Listing
         $this->checkConfigMail();
         $this->prepareToolbar($data);
         $this->prepareHoursMinutes($data);
-        $this->resetQueueProcess();
-
 
         $this->prepareMailSettings($data);
         $this->prepareMultilingualOption($data);
@@ -89,9 +87,6 @@ trait Listing
         acym_trigger('onAcymGetSendingMethods', [&$data]);
         acym_trigger('onAcymGetSendingMethodsSelected', [&$data]);
 
-        $data['sendingMethodsHtmlSettings'] = [];
-        acym_trigger('onAcymGetSendingMethodsHtmlSetting', [&$data]);
-
         $data['embedImage'] = [];
         $data['embedAttachment'] = [];
         acym_trigger('onAcymSendingMethodOptions', [&$data]);
@@ -103,14 +98,14 @@ trait Listing
         $toolbarHelper->addButton(
             acym_translation('ACYM_SEND_TEST'),
             [
-                'acym-data-before' => 'jQuery.acymConfigSave();',
+                'data-before-action' => 'configSave',
                 'data-task' => 'test',
             ]
         );
         $toolbarHelper->addButton(
             acym_translation('ACYM_SAVE'),
             [
-                'acym-data-before' => 'jQuery.acymConfigSave();',
+                'data-before-action' => 'configSave',
                 'data-task' => 'save',
             ],
             '',
@@ -133,23 +128,14 @@ trait Listing
         $data['languages'] = [];
 
         foreach ($langs as $lang => $obj) {
-            if ($lang === 'xx-XX') continue;
+            if ($lang === 'xx-XX') {
+                continue;
+            }
 
             $oneLanguage = new \stdClass();
             $oneLanguage->language = $lang;
             $oneLanguage->name = $obj->name;
-
-            $linkEdit = acym_completeLink('language&task=displayLanguage&code='.$lang, true);
-            $icon = $obj->exists ? 'edit' : 'add';
-            $idModalLanguage = 'acym_modal_language_'.$lang;
-            $oneLanguage->edit = acym_modal(
-                '<i class="acymicon-'.$icon.' cursor-pointer acym__color__blue" data-open="'.$idModalLanguage.'" data-ajax="false" data-iframe="'.$linkEdit.'" data-iframe-class="acym__iframe_language" id="image'.$lang.'"></i>',
-                '', //<iframe src="'.$linkEdit.'"></iframe>
-                $idModalLanguage,
-                ['data-reveal-larger' => true],
-                [],
-                false
-            );
+            $oneLanguage->icon = $obj->exists ? 'edit' : 'add';
 
             $data['languages'][] = $oneLanguage;
         }
@@ -220,7 +206,7 @@ trait Listing
 
     private function prepareAcl(array &$data): void
     {
-        $data['acl'] = acym_cmsPermission();
+        $data['adminPermissions'] = acym_hasAdminPermissions();
         $data['acl_advanced'] = acym_getPagesForAcl();
         $data['aclType'] = new AclType();
     }
@@ -232,7 +218,6 @@ trait Listing
         $data['acychecker_get_link'] = ACYM_ACYCHECKER_WEBSITE.'?utm_source=acymailing_plugin&utm_campaign=get_acychecker&utm_medium=button_configuration_security';
 
         $data['level'] = acym_level(ACYM_ESSENTIAL);
-        $data['labelDropdownCaptcha'] = acym_translation('ACYM_CONFIGURATION_CAPTCHA');
 
         $captchaOptions = array_replace(
             [
@@ -247,7 +232,6 @@ trait Listing
         $data['captchaOptions'] = $captchaOptions;
 
         if (!acym_level(ACYM_ESSENTIAL)) {
-            $data['labelDropdownCaptcha'] .= ' '.acym_translation('ACYM_PRO_VERSION_ONLY');
             $data['captchaOptions'] = [];
         }
     }
@@ -303,9 +287,10 @@ trait Listing
 
         $this->handleReplyTo($formData);
         $this->handleWordWrap($formData);
-        $this->handleDemoSite($formData);
+        $this->handleQueueSettings($formData);
         $this->handleAcl($formData);
         $this->handleSelect2Fields($formData);
+        $this->handleDemoSite($formData);
         $this->handleAcyChecker($formData);
         $this->handleNewDkim($formData);
         $this->handleEmails($formData);
@@ -313,6 +298,7 @@ trait Listing
 
         acym_trigger('onBeforeSaveConfigFields', [&$formData]);
 
+        // Don't move this line in the if, we need to do it before the save
         $licenseKeyBeforeSave = $this->config->get('license_key');
 
         if ($this->config->saveConfig($formData)) {
@@ -349,17 +335,59 @@ trait Listing
         }
     }
 
+    private function handleQueueSettings(array &$formData): void
+    {
+        $currentTaskId = (int)$this->config->get('scheduled_task_id');
+        $frequency = (int)$formData['cron_frequency'];
+
+        //TODO maybe also handle 15min cron like this
+        if (
+            !acym_level(ACYM_ESSENTIAL)
+            || $formData['queue_type'] === 'manual'
+            || empty($frequency)
+            || $frequency === 900
+            || !acym_isLicenseValidWeekly()
+        ) {
+            acym_deleteScheduledTask(
+                [
+                    'taskId' => $currentTaskId,
+                    'type' => 'plg_task_requests_task_get',
+                    'name' => self::CRON_TASK_NAME,
+                ]
+            );
+            $formData['scheduled_task_id'] = 0;
+
+            return;
+        }
+
+        $taskId = acym_scheduleTask(
+            [
+                'title' => 'AcyMailing – Automated tasks',
+                'type' => 'plg_task_requests_task_get',
+                'frequencyInMinutes' => $frequency / 60,
+                'name' => self::CRON_TASK_NAME,
+                'taskFrequency' => 'every_minute',
+                'taskId' => $currentTaskId,
+                'config' => $formData,
+            ]
+        );
+
+        if (!empty($taskId) && ACYM_CMS === 'joomla') {
+            $formData['scheduled_task_id'] = $taskId;
+        }
+    }
+
     private function handleDemoSite(array &$formData): void
     {
     }
 
     private function handleAcl(array &$formData): void
     {
-        if (ACYM_PRODUCTION) {
+        if (ACYM_PRODUCTION && acym_hasAdminPermissions()) {
             $aclPages = array_keys(acym_getPagesForAcl());
             foreach ($aclPages as $page) {
                 if (empty($formData['acl_'.$page])) {
-                    $formData['acl_'.$page] = ['all'];
+                    $formData['acl_'.$page] = [ACYM_ADMIN_GROUP];
                 }
             }
         }
@@ -377,16 +405,20 @@ trait Listing
             'acy_notification_subform',
             'acy_notification_profile',
             'acy_notification_confirm',
-            'wp_access',
             'multilingual_languages',
             'allowed_hosts',
             'unsub_survey',
         ];
 
+        if (acym_hasAdminPermissions()) {
+            $select2Fields[] = 'wp_access';
+        }
+
         foreach ($select2Fields as $oneField) {
             if ($oneField === 'unsub_survey' && !empty($formData[$oneField])) {
                 $formData[$oneField] = json_encode($formData[$oneField]);
             }
+
             if (empty($formData[$oneField])) {
                 $formData[$oneField] = [];
             }
@@ -422,6 +454,7 @@ trait Listing
 
     private function handleNewDkim(array &$formData): void
     {
+        // The user set DKIM as disabled
         if (empty($formData['dkim'])) {
             return;
         }
@@ -429,10 +462,12 @@ trait Listing
         $privateKey = $this->config->get('dkim_private');
         $publicKey = $this->config->get('dkim_public');
 
+        // We're manually submitting keys
         if (!empty($formData['dkim_private']) || !empty($formData['dkim_public'])) {
             return;
         }
 
+        // We don't submit keys and stored keys are not empty
         if (!isset($formData['dkim_private']) && !empty($privateKey) && !empty($publicKey)) {
             return;
         }
@@ -451,6 +486,7 @@ trait Listing
         $isLicenseKeyUpdated = isset($formData['license_key']) && $licenseKeyBeforeSave !== $formData['license_key'];
 
         if ($isLicenseKeyUpdated && ACYM_PRODUCTION) {
+            // If we add a key or edit it, we try to attach it
             if (!empty($formData['license_key'])) {
                 $resultAttachLicenseOnUpdateMe = $this->attachLicenseOnUpdateMe($formData['license_key']);
 
@@ -458,6 +494,7 @@ trait Listing
                     $this->displayMessage($resultAttachLicenseOnUpdateMe['message']);
                 }
             } else {
+                // If we remove a key, we try to unlink it
                 $resultUnlinkLicenseOnUpdateMe = $this->unlinkLicenseOnUpdateMe($licenseKeyBeforeSave);
 
                 if (!empty($resultUnlinkLicenseOnUpdateMe['message'])) {
@@ -471,6 +508,7 @@ trait Listing
 
     private function handleMultilingual(array $formData): void
     {
+        // Remove unused email translations
         $removed = array_diff(
             explode(',', acym_getVar('string', 'previous_multilingual_languages', '')),
             $formData['multilingual_languages']
@@ -494,6 +532,7 @@ trait Listing
         $mailerHelper->Body = acym_translation('ACYM_TEST_EMAIL');
         $mailerHelper->SMTPDebug = 1;
         $mailerHelper->isTest = true;
+        //We set the full error reporting if we are in debug mode
         if (acym_isDebug()) {
             $mailerHelper->SMTPDebug = 2;
         }
@@ -541,7 +580,7 @@ trait Listing
             if (is_array($unsubSurvey)) {
                 foreach ($unsubSurvey as $key => $value) {
                     if (is_string($value)) {
-                        $unsubSurvey[$key] = strip_tags($value);
+                        $unsubSurvey[$key] = acym_stripTags($value);
                     }
                 }
                 $formData['unsub_survey'] = json_encode($unsubSurvey);
@@ -555,7 +594,7 @@ trait Listing
                     if (is_array($unsubSurvey) && isset($unsubSurvey['unsub_survey'])) {
                         foreach ($unsubSurvey['unsub_survey'] as $key => $value) {
                             if (is_string($value)) {
-                                $unsubSurveyTranslation[$lang]['unsub_survey'][$key] = strip_tags($value);
+                                $unsubSurveyTranslation[$lang]['unsub_survey'][$key] = acym_stripTags($value);
                             }
                         }
                     }
@@ -565,22 +604,19 @@ trait Listing
         }
     }
 
-    private function resetQueueProcess(): void
-    {
-        if (!acym_level(ACYM_ESSENTIAL) && $this->config->get('queue_type', 'manual') !== 'manual') {
-            $this->config->saveConfig(['queue_type' => 'manual']);
-        }
-    }
-
 
     public function addNewSml(): void
     {
+        acym_checkToken();
+
         acym_trigger('onConfigurationAddSml');
         $this->listing();
     }
 
     public function deleteSml(): void
     {
+        acym_checkToken();
+
         acym_trigger('onConfigurationDeleteSml');
         $this->listing();
     }

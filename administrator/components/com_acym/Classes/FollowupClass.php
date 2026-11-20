@@ -123,6 +123,7 @@ class FollowupClass extends AcymClass
             $element->click = number_format($element->click / $numberMailSent * 100, 2);
         }
 
+        //Tracking sales
         if (!acym_isTrackingSalesActive()) return;
 
         $trackingSales = acym_loadObject(
@@ -248,12 +249,12 @@ class FollowupClass extends AcymClass
             $list->name = $element->display_name;
             $list->description = '';
             $list->color = '#'.implode('', [
-                    ListClass::COLOR_PARTS[rand(0, 15)],
-                    ListClass::COLOR_PARTS[rand(0, 15)],
-                    ListClass::COLOR_PARTS[rand(0, 15)],
-                    ListClass::COLOR_PARTS[rand(0, 15)],
-                    ListClass::COLOR_PARTS[rand(0, 15)],
-                    ListClass::COLOR_PARTS[rand(0, 15)],
+                    ListClass::COLOR_PARTS[acym_rand(0, 15)],
+                    ListClass::COLOR_PARTS[acym_rand(0, 15)],
+                    ListClass::COLOR_PARTS[acym_rand(0, 15)],
+                    ListClass::COLOR_PARTS[acym_rand(0, 15)],
+                    ListClass::COLOR_PARTS[acym_rand(0, 15)],
+                    ListClass::COLOR_PARTS[acym_rand(0, 15)],
                 ]);
             $list->access = '';
             $list->type = ListClass::LIST_TYPE_FOLLOWUP;
@@ -404,6 +405,7 @@ class FollowupClass extends AcymClass
         $this->getDelaySettingToMail($delaySettings, $id);
 
         unset($mail->id);
+        unset($mail->creator_id);
         $mail->name .= '_copy';
 
         $mail->id = $mailClass->save($mail);
@@ -472,6 +474,7 @@ class FollowupClass extends AcymClass
 
         $followupListIds = [];
         foreach ($followupLists as $listId => $followupList) {
+            // The user unsubscribed, don't re-subscribe them
             if (in_array($followupList->status, [0, '0'], true)) {
                 continue;
             }
@@ -571,13 +574,19 @@ class FollowupClass extends AcymClass
         $triggers = [];
         acym_trigger('onAcymGetFollowupDailyBases', [&$triggers]);
 
-        return acym_loadObjectList('SELECT * FROM #__acym_followup WHERE `trigger` IN ("'.implode('","', $triggers).'") AND active  = 1');
+        if (empty($triggers)) {
+            return [];
+        }
+
+        $safeTriggers = array_map('acym_escapeDB', $triggers);
+
+        return acym_loadObjectList('SELECT * FROM #__acym_followup WHERE `trigger` IN ('.implode(',', $safeTriggers).') AND active  = 1');
     }
 
-    public function queueForSubscribers(int $emailId): bool
+    public function queueForSubscribers(int $emailId): ?int
     {
         if (empty($emailId)) {
-            return false;
+            return null;
         }
 
         $mailInfo = acym_loadObject(
@@ -587,7 +596,7 @@ class FollowupClass extends AcymClass
                 ON followup.id = map.followup_id 
             WHERE map.mail_id = '.intval($emailId)
         );
-        if (empty($mailInfo)) return false;
+        if (empty($mailInfo)) return null;
 
         $this->addMailStat($mailInfo->mail_id);
 
@@ -598,7 +607,9 @@ class FollowupClass extends AcymClass
                 WHERE status = 1 
                     AND list_id = '.intval($mailInfo->list_id);
 
-        return (bool)acym_query($query);
+        $addedEmails = acym_query($query);
+
+        return $addedEmails === false || $addedEmails === null ? null : intval($addedEmails);
     }
 
     public function getXFollowups(array $options): array
@@ -646,6 +657,11 @@ class FollowupClass extends AcymClass
         return $followUps;
     }
 
+    /**
+     * @param string $mailId
+     *
+     * @return object|null
+     */
     public function getOneByMailId(int $mailId): ?object
     {
         return acym_loadObject(
@@ -657,6 +673,11 @@ class FollowupClass extends AcymClass
         );
     }
 
+    /**
+     * @param $followupId
+     *
+     * @return object
+     */
     public function getLastEmail(int $followupId): object
     {
         return acym_loadObject(
@@ -664,6 +685,14 @@ class FollowupClass extends AcymClass
         );
     }
 
+    /**
+     * @param int   $followUpId
+     * @param int   $userId
+     * @param int   $additionalDelay
+     * @param array $mailIdToSkip
+     *
+     * @return void
+     */
     public function triggerFollowUp(int $followUpId, int $userId, int $additionalDelay = 0, array $mailIdToSkip = []): void
     {
         $followUp = $this->getOneById($followUpId);
@@ -687,6 +716,10 @@ class FollowupClass extends AcymClass
                 $sendDate = acym_escapeDB(acym_date($sendDate, 'Y-m-d H:i:s', false));
                 $allValues[] = '('.intval($mail->mail_id).', '.intval($userId).', '.$sendDate.', '.$this->config->get('priority_newsletter', 3).', 0'.')';
             }
+        }
+
+        if (empty($allValues)) {
+            return;
         }
 
         $queryToProcess = 'INSERT IGNORE INTO #__acym_queue (`mail_id`, `user_id`, `sending_date`, `priority`, `try`) VALUES '.implode(', ', $allValues);

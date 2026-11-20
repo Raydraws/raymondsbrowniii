@@ -22,12 +22,19 @@ if ($params->get('userinfo', '1') == '1' && !empty($currentUserEmail)) {
 }
 
 $visibleLists = $params->get('displists', []);
+if ($visibleLists === 'None') {
+    $visibleLists = [];
+}
 $hiddenLists = $params->get('hiddenlists', []);
+if ($hiddenLists === 'None') {
+    $hiddenLists = [];
+}
 $fields = $params->get('fields', []);
 $allfields = is_array($fields) ? $fields : explode(',', $fields);
 if (!in_array('2', $allfields)) {
     $allfields[] = 2;
 }
+
 acym_arrayToInteger($visibleLists);
 acym_arrayToInteger($hiddenLists);
 acym_arrayToInteger($allfields);
@@ -58,7 +65,7 @@ if (empty($identifiedUser->id)) {
     //Check lists based on the option
     $checkedLists = $params->get('listschecked', []);
     if (!is_array($checkedLists)) {
-        if (strtolower($checkedLists) == 'all') {
+        if (strtolower($checkedLists) === 'all') {
             $checkedLists = $visibleLists;
         } elseif (strpos($checkedLists, ',') || is_numeric($checkedLists)) {
             $checkedLists = explode(',', $checkedLists);
@@ -97,6 +104,8 @@ $unsubButton = $params->get('unsub', '0');
 $listPosition = $params->get('listposition', 'before');
 $displayOutside = $params->get('textmode') == '0';
 
+$showTrackingConsent = $params->get('trackingconsent', '0') == '1';
+
 // Display success message
 $successMode = $params->get('successmode', 'replace');
 
@@ -125,14 +134,14 @@ $privacyURL = acym_getArticleURL(
 if (empty($termsURL)) {
     $termsURL = $params->get('terms_url') ?? '';
     if (!empty($termsURL)) {
-        $termsURL = '<a href="'.acym_escapeUrl($termsURL).'" target="_blank">'.acym_translation('ACYM_TERMS_CONDITIONS').'</a>';
+        $termsURL = '<a href="'.acym_escapeUrl($termsURL).'" target="_blank">'.acym_escapeHtml(acym_translation('ACYM_TERMS_CONDITIONS')).'</a>';
     }
 }
 
 if (empty($privacyURL)) {
     $privacyURL = $params->get('privacy_url') ?? '';
     if (!empty($privacyURL)) {
-        $privacyURL = '<a href="'.acym_escapeUrl($privacyURL).'" target="_blank">'.acym_translation('ACYM_PRIVACY_POLICY').'</a>';
+        $privacyURL = '<a href="'.acym_escapeUrl($privacyURL).'" target="_blank">'.acym_escapeHtml(acym_translation('ACYM_PRIVACY_POLICY')).'</a>';
     }
 }
 
@@ -151,11 +160,11 @@ $formName = acym_getModuleFormName();
 $formAction = htmlspecialchars_decode(acym_completeLink('frontusers', true, true));
 
 $js = 'window.addEventListener("DOMContentLoaded", (event) => {';
-$js .= "\n".'acymModule["excludeValues'.$formName.'"] = [];';
+$js .= "\n".'window.acymModule["excludeValues'.$formName.'"] = [];';
 $fieldsToDisplay = [];
 foreach ($fields as $field) {
     $fieldsToDisplay[$field->id] = $field->name;
-    $js .= "\n".'acymModule["excludeValues'.$formName.'"]["'.$field->id.'"] = "'.acym_translation($field->name, true).'";';
+    $js .= "\n".'window.acymModule["excludeValues'.$formName.'"]["'.$field->id.'"] = '.json_encode(acym_translation($field->name)).';';
 }
 $js .= "  });";
 // Exclude default values from fields, if the user didn't fill them in
@@ -171,10 +180,11 @@ if ($includeJs === 'module') {
 	<div class="acym_module <?php echo acym_escape($formClass); ?>" id="acym_module_<?php echo acym_escape($formName); ?>">
 		<div class="acym_fulldiv" id="acym_fulldiv_<?php echo acym_escape($formName); ?>" <?php echo $style; ?>>
 			<form enctype="multipart/form-data"
-				  id="<?php echo acym_escape($formName); ?>"
-				  name="<?php echo acym_escape($formName); ?>"
-				  method="POST"
-				  action="<?php echo acym_escape($formAction); ?>">
+			      id="<?php echo acym_escape($formName); ?>"
+			      name="<?php echo acym_escape($formName); ?>"
+			      method="POST"
+			      aria-label="<?php echo acym_escape(acym_translation('ACYM_SUBSCRIPTION')); ?>"
+			      action="<?php echo acym_escape($formAction); ?>">
 				<div class="acym_module_form">
                     <?php
                     $introText = $params->get('introtext', '');

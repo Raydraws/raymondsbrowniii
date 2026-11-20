@@ -716,7 +716,7 @@ class ImapClient
 
         // pre-login capabilities can be not complete
         $this->capability_readed = false;
-        $result = $this->authenticate($user, $password);
+        $result = $this->prefs['auth_type'] === 'XOAUTH2' ? $this->authenticate($user, $password) : $this->login($user, $password);
 
         // Connected and authenticated
         if (is_resource($result)) {
@@ -2339,7 +2339,7 @@ class ImapClient
                         $string = preg_replace('/\n[\t\s]*/', ' ', trim($string));
 
                         switch ($field) {
-                            case 'date';
+                            case 'date':
                                 $string = substr($string, 0, 128);
                                 $result[$id]->date = $string;
                                 $result[$id]->timestamp = Utils::strtotime($string);

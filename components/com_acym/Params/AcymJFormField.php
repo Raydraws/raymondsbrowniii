@@ -1,4 +1,5 @@
 <?php
+defined('_JEXEC') || die('Restricted Access');
 
 if (!class_exists('AcymJFormField')) {
     if ('Joomla' === 'Joomla') {

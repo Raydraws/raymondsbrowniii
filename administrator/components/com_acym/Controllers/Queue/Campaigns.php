@@ -17,7 +17,11 @@ trait Campaigns
 
         if (ACYM_PRODUCTION) {
             if (acym_level(ACYM_ESSENTIAL) && $this->config->get('cron_last', 0) < (time() - 43200)) {
-                $message = acym_translation('ACYM_CREATE_CRON_REMINDER');
+                if (empty($this->config->get('active_cron', 0))) {
+                    $message = acym_translation('ACYM_CRON_REMINDER_DISABLED');
+                } else {
+                    $message = acym_translation('ACYM_CRON_REMINDER_NOT_CALLED');
+                }
                 $message .= ' <a id="acym__queue__configure-cron" href="'.acym_completeLink('configuration&tab=license').'">'.acym_translation('ACYM_GOTO_CONFIG').'</a>';
 
                 $notification = [
@@ -28,10 +32,12 @@ trait Campaigns
             }
         }
 
+        // Get filters data
         $searchFilter = $this->getVarFiltersListing('string', 'cqueue_search', '');
         $tagFilter = $this->getVarFiltersListing('string', 'cqueue_tag', '');
         $status = $this->getVarFiltersListing('string', 'cqueue_status', '');
 
+        // Get pagination data
         $pagination = new PaginationHelper();
         $campaignsPerPage = $pagination->getListLimit();
         $page = $this->getVarFiltersListing('int', 'cqueue_pagination_page', 1);
@@ -47,6 +53,7 @@ trait Campaigns
             ]
         );
 
+        // Prepare the pagination
         $pagination->setStatus((int)$matchingElements['total']->total, $page, $campaignsPerPage);
         $tagClass = new TagClass();
 
@@ -81,19 +88,20 @@ trait Campaigns
             ],
             'close'
         );
-        $otherContent = acym_modal(
-            '<i class="acymicon-paper-plane"></i>'.acym_translation('ACYM_SEND_MAILS_MANUALLY'),
-            '',
-            null,
-            ['data-reveal-larger' => true],
+        $toolbarHelper->addModalButton(
             [
-                'class' => 'cell medium-6 large-shrink button',
-                'data-reload' => 'true',
-                'data-ajax' => 'true',
-                'data-iframe' => '&ctrl=queue&task=continuesend&id=0&totalsend=0',
+                'button' => '<i class="acymicon-paper-plane"></i>'.acym_escapeHtml(acym_translation('ACYM_SEND_MAILS_MANUALLY')),
+                'attributesModal' => [
+                    'data-reveal-larger' => true,
+                ],
+                'attributesButton' => [
+                    'class' => 'cell medium-6 large-shrink button',
+                    'data-reload' => 'true',
+                    'data-ajax' => 'true',
+                    'data-iframe' => '&ctrl=queue&task=continuesend&id=0&totalsend=0',
+                ],
             ]
         );
-        $toolbarHelper->addOtherContent($otherContent);
         $toolbarHelper->addFilterByTag($data, 'cqueue_tag', 'acym__queue__filter__tags acym__select');
 
         $data['toolbar'] = $toolbarHelper;
@@ -106,6 +114,8 @@ trait Campaigns
 
     public function cancelSending(): void
     {
+        acym_checkToken();
+
         $mailId = acym_getVar('int', 'acym__queue__cancel__mail_id');
 
         if (!empty($mailId)) {
@@ -131,6 +141,8 @@ trait Campaigns
 
     public function playPauseSending(): void
     {
+        acym_checkToken();
+
         $active = acym_getVar('int', 'acym__queue__play_pause__active__new_value');
         $campaignId = acym_getVar('int', 'acym__queue__play_pause__campaign_id');
 

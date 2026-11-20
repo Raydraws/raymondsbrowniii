@@ -27,36 +27,37 @@ class plgAcymPostmark extends AcymPlugin
     {
         $config = empty($data['tab']) ? $this->config : $data['tab']->config;
         $defaultApiKey = $config->get(self::SENDING_METHOD_ID.'_api_key');
-        ob_start();
         ?>
-		<div class="send_settings cell grid-x acym_vcenter" id="<?php echo self::SENDING_METHOD_ID; ?>_settings">
+		<div class="send_settings cell grid-x acym_vcenter" id="<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_settings">
 			<div class="cell grid-x acym_vcenter acym__sending__methods__one__settings">
-				<label class="cell shrink margin-right-1" for="<?php echo self::SENDING_METHOD_ID; ?>_settings_api-key">
-                    <?php echo acym_translationSprintf(
-                        'ACYM_SENDING_METHOD_API_KEY',
-                        self::SENDING_METHOD_NAME
+				<label class="cell shrink margin-right-1" for="<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_settings_api-key">
+                    <?php echo acym_escapeHtml(
+                        acym_translationSprintf(
+                            'ACYM_SENDING_METHOD_API_KEY',
+                            self::SENDING_METHOD_NAME
+                        )
                     ); ?>
 				</label>
-                <?php echo $this->getLinks('https://account.postmarkapp.com/sign_up', 'https://postmarkapp.com/pricing'); ?>
+                <?php $this->getLinks('https://account.postmarkapp.com/sign_up', 'https://postmarkapp.com/pricing'); ?>
 				<input type="text"
-					   id="<?php echo self::SENDING_METHOD_ID; ?>_settings_api-key"
-					   value="<?php echo empty($defaultApiKey) ? $this->config->get(self::SENDING_METHOD_ID.'_api_key') : $defaultApiKey; ?>"
-					   name="config[<?php echo self::SENDING_METHOD_ID; ?>_api_key]"
-					   class="cell margin-next-1 acym__configuration__mail__settings__text">
-                <?php echo $this->getTestCredentialsSendingMethodButton(self::SENDING_METHOD_ID); ?>
+				       id="<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_settings_api-key"
+				       value="<?php echo acym_escape(empty($defaultApiKey) ? $this->config->get(self::SENDING_METHOD_ID.'_api_key') : $defaultApiKey); ?>"
+				       name="config[<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_api_key]"
+				       class="cell margin-next-1 acym__configuration__mail__settings__text">
+                <?php $this->getTestCredentialsSendingMethodButton(self::SENDING_METHOD_ID); ?>
 			</div>
 			<div class="cell grid-x acym_vcenter acym__sending__methods__one__settings">
 				<label class="cell medium-6">
-                    <?php echo acym_translation('ACYM_POSTMARK_STREAM_ID').acym_info(['textShownInTooltip' => 'ACYM_STREAM_ID_INFO']); ?>
+                    <?php echo acym_escapeHtml(acym_translation('ACYM_POSTMARK_STREAM_ID'));
+                    acym_info(['textShownInTooltip' => 'ACYM_STREAM_ID_INFO']); ?>
 					<input type="text"
-						   class="cell auto"
-						   name="config[postmark_stream_id]"
-						   value="<?php echo acym_escape(empty($this->config->get('postmark_stream_id')) ? '' : $this->config->get('postmark_stream_id')); ?>">
+					       class="cell auto"
+					       name="config[postmark_stream_id]"
+					       value="<?php echo acym_escape(empty($this->config->get('postmark_stream_id')) ? '' : $this->config->get('postmark_stream_id')); ?>">
 				</label>
 			</div>
 		</div>
         <?php
-        $data['sendingMethodsHtmlSettings'][self::SENDING_METHOD_ID] = ob_get_clean();
     }
 
     public function getHeadersSendingMethod($sendingMethod, $credentials = [], $sendingMethodListParams = [])
@@ -70,6 +71,13 @@ class plgAcymPostmark extends AcymPlugin
         ];
     }
 
+    /**
+     * @param array  $credentials
+     * @param string $sendingMethod
+     * @param array  $sendingMethodListParams this parameter is only used for the plugin sending method list
+     *
+     * @return void
+     */
     public function onAcymGetCredentialsSendingMethod(array &$credentials, string $sendingMethod, array $sendingMethodListParams = [])
     {
         if ($sendingMethod != self::SENDING_METHOD_ID) return;
@@ -102,6 +110,7 @@ class plgAcymPostmark extends AcymPlugin
 
     public function onAcymSendEmail(&$response, $mailerHelper, $to, $from, $reply_to, $bcc = [], $attachments = [], $sendingMethodListParams = [])
     {
+        //https://postmarkapp.com/developer/api/email-api
         if ($mailerHelper->externalMailer !== self::SENDING_METHOD_ID) return;
 
         $data = [
@@ -126,6 +135,7 @@ class plgAcymPostmark extends AcymPlugin
             $data['Attachments'] = $attachFormated;
         }
 
+        // Handle the Stream ID
         if (!empty($mailerHelper->mailId)) {
             $mailId = $mailerHelper->mailId;
             if (acym_isMultilingual()) {

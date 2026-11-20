@@ -16,6 +16,8 @@ trait Detailed
 
         $this->prepareDefaultPageInfo($data);
 
+        $data['anonymousStats'] = !empty($this->config->get('anonymous_stats', 0));
+
         $this->prepareDetailedListing($data);
         if (count($this->selectedMailIds) == 1) {
             if ($data['isAbTest']) {
@@ -31,6 +33,8 @@ trait Detailed
 
     public function exportDetailed(): void
     {
+        acym_checkToken();
+
         $exportHelper = new ExportHelper();
         $data = [];
         $this->prepareDefaultPageInfo($data);
@@ -51,9 +55,9 @@ trait Detailed
         foreach ($columnsMailStat as $column) {
             if (in_array($column, ['user_id', 'mail_id'])) continue;
             $trad = acym_translation('ACYM_'.strtoupper($column).'_COLUMN_STAT');
-            if ($column == 'send_date') $trad = acym_translation('ACYM_SEND_DATE');
-            if ($column == 'open') $trad = acym_translation('ACYM_OPEN_TOTAL_COLUMN_STAT');
-            if ($column == 'bounce') $trad = acym_translation('ACYM_BOUNCE_UNIQUE_COLUMN_STAT');
+            if ($column === 'send_date') $trad = acym_translation('ACYM_SEND_DATE');
+            if ($column === 'open') $trad = acym_translation('ACYM_OPEN_TOTAL_COLUMN_STAT');
+            if ($column === 'bounce') $trad = acym_translation('ACYM_BOUNCE_UNIQUE_COLUMN_STAT');
             $columnsToExport['userstat.'.$column] = $trad;
         }
 
@@ -69,8 +73,8 @@ trait Detailed
     private function prepareDetailedListing(array &$data): void
     {
         $data['search'] = $this->getVarFiltersListing('string', 'detailed_stats_search', '');
-        $data['ordering'] = $this->getVarFiltersListing('string', 'detailed_stats_ordering', 'send_date');
-        $data['orderingSortOrder'] = $this->getVarFiltersListing('string', 'detailed_stats_ordering_sort_order', 'desc');
+        $data['ordering'] = $this->getVarFiltersListing('cmd', 'detailed_stats_ordering', 'send_date');
+        $data['orderingSortOrder'] = $this->getVarFiltersListing('cmd', 'detailed_stats_ordering_sort_order', 'desc');
 
         if (empty($this->selectedMailIds)) {
             return;
@@ -93,6 +97,7 @@ trait Detailed
             ]
         );
 
+        // Prepare the pagination
         $pagination->setStatus((int)$matchingDetailedStats['total']->total, $page, $detailedStatsPerPage);
 
         $data['pagination'] = $pagination;

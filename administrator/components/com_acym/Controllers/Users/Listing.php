@@ -18,8 +18,8 @@ trait Listing
         acym_setVar('layout', 'listing');
 
         $data = [];
-        $data['ordering'] = $this->getVarFiltersListing('string', 'users_ordering', 'id');
-        $data['orderingSortOrder'] = $this->getVarFiltersListing('string', 'users_ordering_sort_order', 'desc');
+        $data['ordering'] = $this->getVarFiltersListing('cmd', 'users_ordering', 'id');
+        $data['orderingSortOrder'] = $this->getVarFiltersListing('cmd', 'users_ordering_sort_order', 'desc');
         $data['pagination'] = new PaginationHelper();
 
         $this->prepareSegmentField($data);
@@ -85,20 +85,27 @@ trait Listing
         );
         $toolbarHelper->addButton(acym_translation('ACYM_IMPORT'), ['data-task' => 'import'], 'upload');
         $entityHelper = new EntitySelectHelper();
-        $otherContent = acym_modal(
-            '<i class="acymicon-bell"></i>'.acym_translation('ACYM_SUBSCRIBE').' (<span id="acym__users__listing__number_to_add_to_list">0</span>)',
-            $entityHelper->entitySelect('list', ['join' => ''], $entityHelper->getColumnsForList(), [
-                'text' => acym_translation('ACYM_SUBSCRIBE_USERS_TO_THESE_LISTS'),
-                'action' => 'addToList',
-            ]),
-            null,
-            [],
+        $toolbarHelper->addModalButton(
             [
-                'class' => 'button button-secondary disabled cell medium-6 large-shrink',
-                'id' => 'acym__users__listing__button--add-to-list',
+                'button' => '<i class="acymicon-bell"></i>'.acym_escapeHtml(
+                        acym_translation('ACYM_SUBSCRIBE')
+                    ).' (<span id="acym__users__listing__number_to_add_to_list">0</span>)',
+                'modalContent' => $entityHelper->entitySelect(
+                    [
+                        'entity' => 'list',
+                        'columnsToDisplay' => $entityHelper->getColumnsForList(),
+                        'buttonSubmit' => [
+                            'text' => acym_translation('ACYM_SUBSCRIBE_USERS_TO_THESE_LISTS'),
+                            'action' => 'addToList',
+                        ],
+                    ]
+                ),
+                'attributesButton' => [
+                    'class' => 'button button-secondary disabled cell medium-6 large-shrink',
+                    'id' => 'acym__users__listing__button--add-to-list',
+                ],
             ]
         );
-        $toolbarHelper->addOtherContent($otherContent);
         $toolbarHelper->addButton(acym_translation('ACYM_CREATE'), ['data-task' => 'edit'], 'user-plus', true);
 
         $data['toolbar'] = $toolbarHelper;
@@ -122,6 +129,7 @@ trait Listing
             }
         );
 
+        // This keeps keys
         $data['lists'] = [0 => acym_translation('ACYM_SELECT_A_LIST')];
         foreach ($lists as $oneList) {
             if ($oneList->type === ListClass::LIST_TYPE_FRONT) continue;
@@ -154,6 +162,7 @@ trait Listing
 
     protected function prepareUsersListing(array &$data): void
     {
+        // Prepare the pagination
         $usersPerPage = $data['pagination']->getListLimit();
         $page = $this->getVarFiltersListing('int', 'users_pagination_page', 1);
 
@@ -174,6 +183,7 @@ trait Listing
             $page
         );
 
+        // Prepare the pagination
         $data['pagination']->setStatus($matchingUsers['total']->total, $page, $usersPerPage);
 
         $data['allUsers'] = $matchingUsers['elements'];
@@ -235,6 +245,8 @@ trait Listing
 
     public function addToList(): void
     {
+        acym_checkToken();
+
         $listsSelected = json_decode(acym_getVar('string', 'acym__entity_select__selected', '[]'), true);
         if (empty($listsSelected)) {
             $listsSelected = [];

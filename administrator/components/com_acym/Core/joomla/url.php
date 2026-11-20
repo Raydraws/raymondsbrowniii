@@ -46,6 +46,7 @@ function acym_frontendLink(string $link, bool $complete = true, bool $sef = true
     if ($sef && ACYM_J39 && strpos($link, 'ctrl=cron') === false && strpos($link, 'ctrl=fronturl') === false) {
         $sh404SEF = acym_isExtensionActive('com_sh404sef') && defined('SH404SEF_IS_RUNNING') && SH404SEF_IS_RUNNING == 1;
         if ($sh404SEF && class_exists('Sh404sefHelperGeneral') && method_exists('Sh404sefHelperGeneral', 'getSefFromNonSef')) {
+            // sh404 generates a PHP notice when the content language is missing in Joomla
             return @Sh404sefHelperGeneral::getSefFromNonSef($link);
         } else {
             try {
@@ -86,4 +87,9 @@ function acym_getMenu()
     }
 
     return $menu;
+}
+
+function acym_parseUrl(string $url)
+{
+    return parse_url($url);
 }

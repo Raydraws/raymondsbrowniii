@@ -7,6 +7,9 @@ use AcyMailing\Helpers\MailerHelper;
 
 trait SubscriberAutomationActions
 {
+    /**
+     * Function called with ajax to search email to remove from the queue
+     */
     public function searchEmails()
     {
         $id = acym_getVar('int', 'id');
@@ -46,7 +49,29 @@ trait SubscriberAutomationActions
         exit;
     }
 
-    public function onAcymDeclareActions(array &$actions): void
+    protected function initAutomationActions(): void
+    {
+        $this->automationActions = [
+            'acy_user' => acym_translation('ACYM_ACTION_ON_USERS'),
+            'acy_user_value' => acym_translation('ACYM_SET_USER_VALUE'),
+            'acy_add_queue' => acym_translation('ACYM_ADD_EMAIL_QUEUE'),
+            'acy_send_email' => acym_translation('ACYM_SEND_EMAIL'),
+            'acy_remove_queue' => acym_translation('ACYM_REMOVE_EMAIL_QUEUE'),
+        ];
+
+        if ($this->config->get('require_confirmation', '1') === '1') {
+            $this->automationActions['resend_confirmation'] = acym_translation('ACYM_RESEND_CONFIRMATION');
+        }
+    }
+
+    public function onAcymDeclareActionsScenario(array &$actions): void
+    {
+        $this->onAcymDeclareActions($actions);
+
+        unset($actions['acy_add_queue']);
+    }
+
+    public function displayActionOptions_acy_user(): void
     {
         $userActions = [
             'confirm' => acym_translation('ACYM_CONFIRM_USER'),
@@ -56,13 +81,11 @@ trait SubscriberAutomationActions
             'delete' => acym_translation('ACYM_DELETE_USER'),
         ];
 
-        $actions['acy_user'] = new stdClass();
-        $actions['acy_user']->name = acym_translation('ACYM_ACTION_ON_USERS');
-
-        ob_start();
         include acym_getPartial('actions', 'acy_user');
-        $actions['acy_user']->option = ob_get_clean();
+    }
 
+    public function displayActionOptions_acy_user_value(): void
+    {
         $userClass = new UserClass();
         $userFields = $userClass->getAllColumnsUserAndCustomField(true);
         unset($userFields['id']);
@@ -84,84 +107,34 @@ trait SubscriberAutomationActions
 
         $fieldClass = new FieldClass();
         $customFields = $fieldClass->getAllFieldsForUser();
-        $customFieldValues = [];
-        foreach ($customFields as $field) {
-            if (in_array($field->type, ['single_dropdown', 'radio', 'checkbox', 'multiple_dropdown']) && !empty($field->value)) {
-                $values = [];
-                $field->value = json_decode($field->value, true);
-                foreach ($field->value as $value) {
-                    $valueTmp = new stdClass();
-                    $valueTmp->text = $value['title'];
-                    $valueTmp->value = $value['value'];
-                    if ($value['disabled'] == 'y') $valueTmp->disable = true;
-                    $values[$value['value']] = $valueTmp;
-                }
-                $customFieldValues[$field->id] = '<div class="acym__automation__one-field intext_select_automation cell" style="display: none">';
-                $customFieldValues[$field->id] .= acym_select(
-                    $values,
-                    '[actions][__and__][acy_user_value][value]',
-                    null,
-                    [
-                        'class' => 'acym__select acym__automation__actions__fields__select',
-                        'data-action-field' => $field->id,
-                    ]
-                );
-                $customFieldValues[$field->id] .= '</div>';
-            } elseif ('date' == $field->type) {
-                $customFieldValues[$field->id] = acym_tooltip(
-                    [
-                        'hoveredText' => '<input class="acym__automation__one-field acym__automation__actions__fields__select intext_input_automation cell" 
-                                            type="text" 
-                                            name="[actions][__and__][acy_user_value][value]" 
-                                            style="display: none" 
-                                            data-action-field="'.intval($field->id).'">',
-                        'textShownInTooltip' => acym_translation('ACYM_DATE_FORMAT_FILTER'),
-                        'classContainer' => 'intext_select_automation cell',
-                    ]
-                );
-            }
-        }
 
-        $actions['acy_user_value'] = new stdClass();
-        $actions['acy_user_value']->name = acym_translation('ACYM_SET_USER_VALUE');
-        ob_start();
         include acym_getPartial('actions', 'acy_user_value');
-        $actions['acy_user_value']->option = ob_get_clean();
+    }
 
-        $actions['acy_add_queue'] = new stdClass();
-        $actions['acy_add_queue']->name = acym_translation('ACYM_ADD_EMAIL_QUEUE');
-        ob_start();
+    public function displayActionOptions_acy_add_queue(): void
+    {
         include acym_getPartial('actions', 'acy_add_queue');
-        $actions['acy_add_queue']->option = ob_get_clean();
+    }
 
-        $actions['acy_send_email'] = new stdClass();
-        $actions['acy_send_email']->name = acym_translation('ACYM_SEND_EMAIL');
-        ob_start();
+    public function displayActionOptions_acy_send_email(): void
+    {
         include acym_getPartial('actions', 'acy_send_email');
-        $actions['acy_send_email']->option = ob_get_clean();
+    }
 
-        $actions['acy_remove_queue'] = new stdClass();
-        $actions['acy_remove_queue']->name = acym_translation('ACYM_REMOVE_EMAIL_QUEUE');
+    public function displayActionOptions_acy_remove_queue(): void
+    {
         $ajaxParams = [
             'plugin' => __CLASS__,
             'trigger' => 'searchEmails',
         ];
-        ob_start();
-        include acym_getPartial('actions', 'acy_remove_queue');
-        $actions['acy_remove_queue']->option = ob_get_clean();
 
-        if ($this->config->get('require_confirmation', '1') === '1') {
-            $actions['resend_confirmation'] = new stdClass();
-            $actions['resend_confirmation']->name = acym_translation('ACYM_RESEND_CONFIRMATION');
-            $actions['resend_confirmation']->option = '<input type="hidden" name="acym_action[actions][__and__][resend_confirmation][save]" />';
-        }
+        include acym_getPartial('actions', 'acy_remove_queue');
     }
 
-    public function onAcymDeclareActionsScenario(array &$actions): void
+    public function displayActionOptions_resend_confirmation(): void
     {
-        $this->onAcymDeclareActions($actions);
-
-        unset($actions['acy_add_queue']);
+        // The action doesn't save if there are no options
+        echo '<input type="hidden" name="acym_action[actions][__and__][resend_confirmation][save]" />';
     }
 
     public function onAcymProcessAction_acy_user(&$query, $action)
@@ -172,10 +145,11 @@ trait SubscriberAutomationActions
             if (!empty($usersToDelete)) $userClass->delete($usersToDelete, true);
         } else {
             $fieldToUpdate = '';
-            if ($action['action'] == 'confirm') $fieldToUpdate = 'confirmed = 1';
-            if ($action['action'] == 'unconfirm') $fieldToUpdate = 'confirmed = 0';
-            if ($action['action'] == 'active') $fieldToUpdate = 'active = 1';
-            if ($action['action'] == 'block') $fieldToUpdate = 'active = 0';
+            if ($action['action'] === 'confirm') $fieldToUpdate = 'confirmed = 1';
+            if ($action['action'] === 'unconfirm') $fieldToUpdate = 'confirmed = 0';
+            if ($action['action'] === 'active') $fieldToUpdate = 'active = 1, deactivation_date = NULL';
+            if ($action['action'] === 'block') $fieldToUpdate = 'active = 0, deactivation_date = UTC_TIMESTAMP()';
+
 
             $queryToProcess = 'UPDATE #__acym_user AS `user` SET '.$fieldToUpdate.' WHERE ('.implode(') AND (', $query->where).')';
             $nbRows = acym_query($queryToProcess);
@@ -281,6 +255,7 @@ trait SubscriberAutomationActions
         $sendDate = acym_date($sendDate, 'Y-m-d H:i:s', false);
         $mailClass = new MailClass();
 
+        //We generate the new mail if it's a template
         $mail = $mailClass->getOneById($action['mail_id']);
 
         if (empty($mail)) return '';
@@ -378,10 +353,11 @@ trait SubscriberAutomationActions
             if (empty($mail)) {
                 $automationAction = '<span class="acym__color__red">'.acym_translation('ACYM_SELECT_AN_EMAIL').'</span>';
             } else {
+                $queueTime = empty($automationAction['acy_add_queue']['time']) ? '[time]' : $automationAction['acy_add_queue']['time'];
                 $automationAction = acym_translationSprintf(
                     'ACYM_ACTION_ADD_QUEUE_SUMMARY',
                     $mail->name,
-                    acym_date(acym_replaceDate($automationAction['acy_add_queue']['time']), 'd M Y H:i')
+                    acym_date(acym_replaceDate($queueTime), 'd M Y H:i')
                 );
             }
         }

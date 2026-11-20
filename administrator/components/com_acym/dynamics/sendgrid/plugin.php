@@ -26,28 +26,28 @@ class plgAcymSendgrid extends AcymPlugin
     {
         $config = empty($data['tab']) ? $this->config : $data['tab']->config;
         $defaultApiKey = $config->get(self::SENDING_METHOD_ID.'_api_key');
-        ob_start();
         ?>
-		<div class="send_settings cell grid-x acym_vcenter" id="<?php echo self::SENDING_METHOD_ID; ?>_settings">
+		<div class="send_settings cell grid-x acym_vcenter" id="<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_settings">
 			<div class="cell grid-x acym_vcenter acym__sending__methods__one__settings">
-				<label class="cell shrink margin-right-1" for="<?php echo self::SENDING_METHOD_ID; ?>_settings_api-key">
-                    <?php echo acym_translationSprintf(
-                        'ACYM_SENDING_METHOD_API_KEY',
-                        self::SENDING_METHOD_NAME
+				<label class="cell shrink margin-right-1" for="<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_settings_api-key">
+                    <?php echo acym_escapeHtml(
+                        acym_translationSprintf(
+                            'ACYM_SENDING_METHOD_API_KEY',
+                            self::SENDING_METHOD_NAME
+                        )
                     ); ?>
 				</label>
-                <?php echo $this->getLinks('https://signup.sendgrid.com/', 'https://sendgrid.com/pricing/'); ?>
+                <?php $this->getLinks('https://signup.sendgrid.com/', 'https://sendgrid.com/pricing/'); ?>
 				<input type="text"
-					   id="<?php echo self::SENDING_METHOD_ID; ?>_settings_api-key"
-					   value="<?php echo empty($defaultApiKey) ? $this->config->get(self::SENDING_METHOD_ID.'_api_key') : $defaultApiKey; ?>"
-					   name="config[<?php echo self::SENDING_METHOD_ID; ?>_api_key]"
-					   class="cell margin-next-1 acym__configuration__mail__settings__text">
-                <?php echo $this->getTestCredentialsSendingMethodButton(self::SENDING_METHOD_ID); ?>
-                <?php echo $this->getCopySettingsButton($data, self::SENDING_METHOD_ID, 'wp_mail_smtp'); ?>
+				       id="<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_settings_api-key"
+				       value="<?php echo acym_escape(empty($defaultApiKey) ? $this->config->get(self::SENDING_METHOD_ID.'_api_key') : $defaultApiKey); ?>"
+				       name="config[<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_api_key]"
+				       class="cell margin-next-1 acym__configuration__mail__settings__text">
+                <?php $this->getTestCredentialsSendingMethodButton(self::SENDING_METHOD_ID); ?>
+                <?php $this->getCopySettingsButton($data, self::SENDING_METHOD_ID, 'wp_mail_smtp'); ?>
 			</div>
 		</div>
         <?php
-        $data['sendingMethodsHtmlSettings'][self::SENDING_METHOD_ID] = ob_get_clean();
     }
 
     public function onAcymTestCredentialSendingMethod($sendingMethod, $credentials)
@@ -58,7 +58,7 @@ class plgAcymSendgrid extends AcymPlugin
             if (!empty($response['error_curl'])) {
                 acym_sendAjaxResponse(acym_translationSprintf('ACYM_ERROR_OCCURRED_WHILE_CALLING_API', $response['error_curl']), [], false);
             } elseif (!empty($response['errors'])) {
-                $message = $response['errors'][0]['message'] == 'authorization required'
+                $message = $response['errors'][0]['message'] === 'authorization required'
                     ? acym_translation('ACYM_AUTHENTICATION_FAILS_WITH_API_KEY')
                     : acym_translationSprintf(
                         'ACYM_API_RETURN_THIS_ERROR',
@@ -73,6 +73,7 @@ class plgAcymSendgrid extends AcymPlugin
 
     public function onAcymSendEmail(&$response, $mailerHelper, $to, $from, $reply_to, $bcc = [], $attachments = [], $sendingMethodListParams = [])
     {
+        //https://sendgrid.com/docs/API_Reference/Web_API_v3/Mail/index.html
         if ($mailerHelper->externalMailer !== self::SENDING_METHOD_ID) return;
         $headers = $this->getHeadersSendingMethod(self::SENDING_METHOD_ID, [], $sendingMethodListParams);
         $headers[] = 'Content-Type: application/json';
@@ -134,9 +135,16 @@ class plgAcymSendgrid extends AcymPlugin
         }
     }
 
+    /**
+     * @param array  $credentials
+     * @param string $sendingMethod
+     * @param array  $sendingMethodListParams this parameter is only used for the plugin sending method list
+     *
+     * @return void
+     */
     public function onAcymGetCredentialsSendingMethod(array &$credentials, string $sendingMethod, array $sendingMethodListParams = [])
     {
-        if ($sendingMethod != self::SENDING_METHOD_ID) return;
+        if ($sendingMethod !== self::SENDING_METHOD_ID) return;
 
         $key = self::SENDING_METHOD_ID.'_api_key';
 
@@ -148,7 +156,7 @@ class plgAcymSendgrid extends AcymPlugin
     public function onAcymGetCreditRemainingSendingMethod(&$html, $reloading = false)
     {
         $sendingMethod = $this->config->get('mailer_method', '');
-        if (empty($sendingMethod) || $sendingMethod != self::SENDING_METHOD_ID) return;
+        if (empty($sendingMethod) || $sendingMethod !== self::SENDING_METHOD_ID) return;
 
         $headers = $this->getHeadersSendingMethod(self::SENDING_METHOD_ID);
 
@@ -201,7 +209,7 @@ class plgAcymSendgrid extends AcymPlugin
 
     public function onAcymGetSettingsSendingMethodFromPlugin(&$data, $plugin, $method)
     {
-        if ($method != self::SENDING_METHOD_ID) return;
+        if ($method !== self::SENDING_METHOD_ID) return;
 
     }
 }

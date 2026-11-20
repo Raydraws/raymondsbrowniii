@@ -1,8 +1,39 @@
 <?php
 
+/*
+ * This file is part of the Symfony package.
+ *
+ * (c) Fabien Potencier <fabien@symfony.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
 
 namespace Symfony\Polyfill\Iconv;
 
+/**
+ * iconv implementation in pure PHP, UTF-8 centric.
+ *
+ * Implemented:
+ * - iconv              - Convert string to requested character encoding
+ * - iconv_mime_decode  - Decodes a MIME header field
+ * - iconv_mime_decode_headers - Decodes multiple MIME header fields at once
+ * - iconv_get_encoding - Retrieve internal configuration variables of iconv extension
+ * - iconv_set_encoding - Set current setting for character encoding conversion
+ * - iconv_mime_encode  - Composes a MIME header field
+ * - iconv_strlen       - Returns the character count of string
+ * - iconv_strpos       - Finds position of first occurrence of a needle within a haystack
+ * - iconv_strrpos      - Finds the last occurrence of a needle within a haystack
+ * - iconv_substr       - Cut out part of a string
+ *
+ * Charsets available for conversion are defined by files
+ * in the charset/ directory and by Iconv::$alias below.
+ * You're welcome to send back any addition you make.
+ *
+ * @author Nicolas Grekas <p@tchwork.com>
+ *
+ * @internal
+ */
 final class Iconv
 {
     public const ERROR_ILLEGAL_CHARACTER = 'iconv(): Detected an illegal character in input string';
@@ -96,11 +127,12 @@ final class Iconv
 
     public static function iconv($inCharset, $outCharset, $str)
     {
-        $str = (string) $str;
+        $str = (string)$str;
         if ('' === $str) {
             return '';
         }
 
+        // Prepare for //IGNORE and //TRANSLIT
 
         $translit = $ignore = '';
 
@@ -149,15 +181,17 @@ final class Iconv
             $outCharset = self::$alias[$outCharset];
         }
 
+        // Load charset maps
 
         if (('utf-8' !== $inCharset && !self::loadMap('from.', $inCharset, $inMap))
-          || ('utf-8' !== $outCharset && !self::loadMap('to.', $outCharset, $outMap))) {
+            || ('utf-8' !== $outCharset && !self::loadMap('to.', $outCharset, $outMap))) {
             trigger_error(sprintf(self::ERROR_WRONG_CHARSET, $inCharset, $outCharset));
 
             return false;
         }
 
         if ('utf-8' !== $inCharset) {
+            // Convert input to UTF-8
             $result = '';
             if (self::mapToUtf8($result, $inMap, $str, $ignore)) {
                 $str = $result;
@@ -175,11 +209,13 @@ final class Iconv
             }
 
             if ('utf-8' === $outCharset) {
+                // UTF-8 validation
                 $str = self::utf8ToUtf8($str, $ignore);
             }
         }
 
         if ('utf-8' !== $outCharset && false !== $str) {
+            // Convert output to UTF-8
             $result = '';
             if (self::mapFromUtf8($result, $outMap, $str, $ignore, $translit)) {
                 return $result;
@@ -254,9 +290,9 @@ final class Iconv
         while ($i < $len) {
             $c = strtolower($str[$i]);
             if ((\ICONV_MIME_DECODE_CONTINUE_ON_ERROR & $mode)
-              && 'utf-8' !== $c
-              && !isset(self::$alias[$c])
-              && !self::loadMap('from.', $c, $d)) {
+                && 'utf-8' !== $c
+                && !isset(self::$alias[$c])
+                && !self::loadMap('from.', $c, $d)) {
                 $d = false;
             } elseif ('B' === strtoupper($str[$i + 1])) {
                 $d = base64_decode($str[$i + 2]);
@@ -292,9 +328,12 @@ final class Iconv
     public static function iconv_get_encoding($type = 'all')
     {
         switch ($type) {
-            case 'input_encoding': return self::$inputEncoding;
-            case 'output_encoding': return self::$outputEncoding;
-            case 'internal_encoding': return self::$internalEncoding;
+            case 'input_encoding':
+                return self::$inputEncoding;
+            case 'output_encoding':
+                return self::$outputEncoding;
+            case 'internal_encoding':
+                return self::$internalEncoding;
         }
 
         return [
@@ -307,10 +346,17 @@ final class Iconv
     public static function iconv_set_encoding($type, $charset)
     {
         switch ($type) {
-            case 'input_encoding': self::$inputEncoding = $charset; break;
-            case 'output_encoding': self::$outputEncoding = $charset; break;
-            case 'internal_encoding': self::$internalEncoding = $charset; break;
-            default: return false;
+            case 'input_encoding':
+                self::$inputEncoding = $charset;
+                break;
+            case 'output_encoding':
+                self::$outputEncoding = $charset;
+                break;
+            case 'internal_encoding':
+                self::$internalEncoding = $charset;
+                break;
+            default:
+                return false;
         }
 
         return true;
@@ -346,7 +392,7 @@ final class Iconv
 
         $chars = $chars[0] ?? [];
 
-        $lineBreak = (int) $pref['line-length'];
+        $lineBreak = (int)$pref['line-length'];
         $lineStart = "=?{$pref['output-charset']}?{$scheme}?";
         $lineLength = \strlen($fieldName) + 2 + \strlen($lineStart) + 2;
         $lineOffset = \strlen($lineStart) + 3;
@@ -457,7 +503,7 @@ final class Iconv
             }
         }
 
-        if ($offset = (int) $offset) {
+        if ($offset = (int)$offset) {
             $haystack = self::iconv_substr($haystack, $offset, 2147483647, 'utf-8');
         }
         $pos = strpos($haystack, $needle);
@@ -496,9 +542,9 @@ final class Iconv
             return false;
         }
 
-        $s = (string) $s;
+        $s = (string)$s;
         $slen = self::iconv_strlen($s, 'utf-8');
-        $start = (int) $start;
+        $start = (int)$start;
 
         if (0 > $start) {
             $start += $slen;
@@ -593,8 +639,8 @@ final class Iconv
                 $u[$j++] = $uchr[0];
 
                 isset($uchr[1]) && 0 !== ($u[$j++] = $uchr[1])
-                    && isset($uchr[2]) && 0 !== ($u[$j++] = $uchr[2])
-                    && isset($uchr[3]) && 0 !== ($u[$j++] = $uchr[3]);
+                && isset($uchr[2]) && 0 !== ($u[$j++] = $uchr[2])
+                && isset($uchr[3]) && 0 !== ($u[$j++] = $uchr[3]);
             }
         }
 
@@ -687,7 +733,7 @@ final class Iconv
     private static function pregOffset($offset)
     {
         $rx = [];
-        $offset = (int) $offset;
+        $offset = (int)$offset;
 
         while ($offset > 65535) {
             $rx[] = '.{65535}';

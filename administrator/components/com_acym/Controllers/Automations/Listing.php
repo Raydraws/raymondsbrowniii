@@ -34,7 +34,7 @@ trait Listing
     {
         acym_checkToken();
 
-        $automations = acym_getVar('int', 'elements_checked');
+        $automations = acym_getVar('array', 'elements_checked', []);
 
         if (empty($automations)) {
             $this->listing();
@@ -95,17 +95,44 @@ trait Listing
         $this->listing();
     }
 
+    public function triggerAutomation(): void
+    {
+        acym_checkToken();
+
+        $automationIds = acym_getVar('array', 'elements_checked', []);
+
+        if (empty($automationIds)) {
+            $this->listing();
+
+            return;
+        }
+
+        $automationClass = new AutomationClass();
+        $result = $automationClass->triggerManual($automationIds);
+
+        if ($result['executed'] > 0) {
+            acym_enqueueMessage(acym_translationSprintf('ACYM_X_AUTOMATIONS_TRIGGERED', $result['executed']), 'info');
+        }
+
+        if ($result['skipped'] > 0) {
+            acym_enqueueMessage(acym_translationSprintf('ACYM_X_SKIPPED_USER_AUTOMATIONS', $result['skipped']), 'warning');
+        }
+
+        $this->listing();
+    }
+
     public function ajaxSetOrdering(): void
     {
         acym_checkToken();
 
         $order = json_decode(acym_getVar('string', 'order') ?? '[]', true);
 
+        $error = false;
         foreach ($order as $index => $automationId) {
             $query = 'UPDATE #__acym_automation SET `ordering` = '.intval($index + 1).' WHERE `id` = '.intval($automationId);
-            acym_query($query);
+            $error = acym_query($query) < 0 || $error;
         }
 
-        acym_sendAjaxResponse($order, [], true);
+        acym_sendAjaxResponse('', [], !$error);
     }
 }

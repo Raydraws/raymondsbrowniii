@@ -1,4 +1,5 @@
 <?php
+defined('_JEXEC') || die('Restricted Access');
 
 use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
@@ -24,6 +25,7 @@ if (version_compare(PHP_VERSION, '7.4.0', '<')) {
         return;
     }
 
+    //Set the debug if the Joomla debug is ON
     if (acym_isDebug()) acym_displayErrors();
 
     $ctrl = acym_getVar('cmd', 'ctrl', 'dashboard');
@@ -31,9 +33,9 @@ if (version_compare(PHP_VERSION, '7.4.0', '<')) {
 
     $config = acym_config();
 
-    displayFreeTrialMessage();
+    acym_displayFreeTrialMessage();
 
-    if (file_exists(ACYM_NEW_FEATURES_SPLASHSCREEN_JSON) && is_writable(ACYM_NEW_FEATURES_SPLASHSCREEN_JSON)) {
+    if (file_exists(ACYM_NEW_FEATURES_SPLASHSCREEN_JSON) && acym_isWritable(ACYM_NEW_FEATURES_SPLASHSCREEN_JSON)) {
         $ctrl = 'dashboard';
         $task = 'features';
         acym_setVar('ctrl', $ctrl);
@@ -55,6 +57,7 @@ if (version_compare(PHP_VERSION, '7.4.0', '<')) {
 
     $controller = new $controllerNamespace();
     if (empty($controller)) {
+        //We redirect to the dashboard...
         acym_redirect(acym_completeLink('dashboard'));
 
         return;

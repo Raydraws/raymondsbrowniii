@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <extension type="package" version="3.0" method="upgrade">
 	<name>Package AcyMailing</name>
-	<creationDate>January 2026</creationDate>
+	<creationDate>November 2026</creationDate>
 	<packagename>acymailing</packagename>
-	<version>10.7.1</version>
+	<version>11.1.2</version>
 	<authorEmail>dev@acyba.com</authorEmail>
 	<author>Acyba</author>
 	<packager>Acyba</packager>
@@ -12,6 +12,9 @@
 	<copyright>Copyright (C) 2009-2026 ACYBA SAS - All rights reserved.</copyright>
 	<license>GNU/GPLv3 https://www.gnu.org/licenses/gpl-3.0.html</license>
 	<description>AcyMailing package containing the component and its core plugins and modules</description>
+	<updateservers>
+		<server type="extension" priority="1" name="AcyMailing">https://api.acymailing.com/public/updatexml/component?extension=acymailing&amp;cms=joomla&amp;level=essential&amp;type=package</server>
+	</updateservers>
 	<files folder="packages">
 		<file type="component" client="admin" id="com_acym">com_acym.zip</file>
 		<file type="module" client="site" id="mod_acym">mod_acym.zip</file>

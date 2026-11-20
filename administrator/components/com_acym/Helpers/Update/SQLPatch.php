@@ -92,6 +92,13 @@ trait SQLPatch
         $this->updateFor1062();
         $this->updateFor1065();
         $this->updateFor1070();
+        $this->updateFor1082();
+        $this->updateFor1090($config);
+        $this->updateFor1102();
+        $this->updateFor1105();
+        $this->updateFor1110();
+        $this->updateFor1111($config);
+        $this->updateFor1112();
     }
 
     public function checkDB(): void

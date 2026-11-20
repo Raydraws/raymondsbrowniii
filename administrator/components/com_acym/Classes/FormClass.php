@@ -12,7 +12,7 @@ class FormClass extends AcymClass
     const SUB_FORM_TYPE_HEADER = 'header';
     const SUB_FORM_TYPE_FOOTER = 'footer';
 
-    private array $settings;
+    private array $settings = [];
 
     public function __construct()
     {
@@ -20,6 +20,13 @@ class FormClass extends AcymClass
 
         $this->table = 'form';
         $this->pkey = 'id';
+    }
+
+    private function initSettings()
+    {
+        if (!empty($this->settings)) {
+            return;
+        }
 
         $listClass = new ListClass();
         $lists = $listClass->getAllForSelect(false);
@@ -28,7 +35,9 @@ class FormClass extends AcymClass
         $allFields = $fieldClass->getAll();
         $fields = [];
         foreach ($allFields as $field) {
-            if ($field->id == 2 || intval($field->active) === 0) continue;
+            if ($field->id == 2 || intval($field->active) === 0) {
+                continue;
+            }
             $fields[$field->id] = acym_translation($field->name);
         }
 
@@ -68,6 +77,23 @@ class FormClass extends AcymClass
                         'unit' => '%',
                         'max' => 100,
                         'default' => 0,
+                        'allowed_types' => [self::SUB_FORM_TYPE_POPUP],
+                    ],
+                    'popup_position' => [
+                        'label' => 'ACYM_POPUP_POSITION',
+                        'type' => 'select',
+                        'options' => [
+                            'center' => acym_translation('ACYM_CENTER'),
+                            'top_left' => acym_translation('ACYM_POSITION_LEFT_TOP'),
+                            'top_center' => acym_translation('ACYM_POSITION_TOP_CENTER'),
+                            'top_right' => acym_translation('ACYM_POSITION_RIGHT_TOP'),
+                            'middle_left' => acym_translation('ACYM_POSITION_LEFT_MIDDLE'),
+                            'middle_right' => acym_translation('ACYM_POSITION_RIGHT_MIDDLE'),
+                            'bottom_left' => acym_translation('ACYM_POSITION_LEFT_BOTTOM'),
+                            'bottom_center' => acym_translation('ACYM_POSITION_BOTTOM_CENTER'),
+                            'bottom_right' => acym_translation('ACYM_POSITION_RIGHT_BOTTOM'),
+                        ],
+                        'default' => 'center',
                         'allowed_types' => [self::SUB_FORM_TYPE_POPUP],
                     ],
                 ],
@@ -119,6 +145,14 @@ class FormClass extends AcymClass
                         ],
                         'default' => 'inside',
                     ],
+                    'fields_width' => [
+                        'label' => 'ACYM_FIELDS_WIDTH',
+                        'description' => 'ACYM_FIELDS_WIDTH_DESC',
+                        'type' => 'number',
+                        'unit' => '%',
+                        // Set to 65% by default to fit with the default size of the email field
+                        'default' => 65,
+                    ],
                 ],
                 'termspolicy' => [
                     'terms_type' => [
@@ -164,6 +198,16 @@ class FormClass extends AcymClass
                         'type' => 'text',
                         'default' => '',
                         'conditional' => ['privacy_type' => 'url'],
+                    ],
+                    'tracking_consent' => [
+                        'label' => 'ACYM_DISPLAY_TRACKING_CONSENT',
+                        'description' => 'ACYM_DISPLAY_TRACKING_CONSENT_DESC',
+                        'type' => 'select',
+                        'options' => [
+                            'no' => acym_translation('ACYM_NO'),
+                            'yes' => acym_translation('ACYM_YES'),
+                        ],
+                        'default' => 'no',
                     ],
                 ],
                 'message' => [
@@ -350,6 +394,40 @@ class FormClass extends AcymClass
                         'default' => 'no-repeat',
                         'allowed_types' => [self::SUB_FORM_TYPE_POPUP],
                     ],
+                    'border_radius' => [
+                        'label' => 'ACYM_RADIUS',
+                        'type' => 'number',
+                        'unit' => 'px',
+                        'default' => 0,
+                        'allowed_types' => [self::SUB_FORM_TYPE_POPUP],
+                    ],
+                    'shadow_color' => [
+                        'label' => 'ACYM_SHADOW_COLOR',
+                        'type' => 'color',
+                        'default' => '#000000',
+                        'allowed_types' => [self::SUB_FORM_TYPE_POPUP],
+                    ],
+                    'shadow_blur' => [
+                        'label' => 'ACYM_SHADOW_BLUR',
+                        'type' => 'number',
+                        'unit' => 'px',
+                        'default' => 0,
+                        'allowed_types' => [self::SUB_FORM_TYPE_POPUP],
+                    ],
+                    'shadow_x' => [
+                        'label' => 'ACYM_SHADOW_OFFSET_X',
+                        'type' => 'number',
+                        'unit' => 'px',
+                        'default' => 0,
+                        'allowed_types' => [self::SUB_FORM_TYPE_POPUP],
+                    ],
+                    'shadow_y' => [
+                        'label' => 'ACYM_SHADOW_OFFSET_Y',
+                        'type' => 'number',
+                        'unit' => 'px',
+                        'default' => 0,
+                        'allowed_types' => [self::SUB_FORM_TYPE_POPUP],
+                    ],
                     'text_color' => [
                         'label' => 'ACYM_TEXT_COLOR',
                         'type' => 'color',
@@ -375,26 +453,28 @@ class FormClass extends AcymClass
             ],
         ];
 
-        if (acym_isMultilingual()) {
-            $languageTexts = [];
-            foreach (acym_getMultilingualLanguages() as $key => $languages) {
-                $languageTexts[$key] = '';
-            }
-            unset($this->settings['options']['redirection']['confirmation_message']);
-            $this->settings['options']['redirection']['langConfirm'] = [
-                'label' => 'ACYM_CONFIRMATION_MESSAGE',
-                'description' => 'ACYM_CONFIRMATION_MESSAGE_DESC',
-                'type' => 'language',
-                'default' => $languageTexts,
-            ];
-
-            unset($this->settings['styles']['button']['text']);
-            $this->settings['styles']['button']['lang'] = [
-                'label' => 'ACYM_SUBSCRIBE_TEXT',
-                'type' => 'language',
-                'default' => $languageTexts,
-            ];
+        if (!acym_isMultilingual()) {
+            return;
         }
+
+        $languageTexts = [];
+        foreach (acym_getMultilingualLanguages() as $key => $languages) {
+            $languageTexts[$key] = '';
+        }
+        unset($this->settings['options']['redirection']['confirmation_message']);
+        $this->settings['options']['redirection']['langConfirm'] = [
+            'label' => 'ACYM_CONFIRMATION_MESSAGE',
+            'description' => 'ACYM_CONFIRMATION_MESSAGE_DESC',
+            'type' => 'language',
+            'default' => $languageTexts,
+        ];
+
+        unset($this->settings['styles']['button']['text']);
+        $this->settings['styles']['button']['lang'] = [
+            'label' => 'ACYM_SUBSCRIBE_TEXT',
+            'type' => 'language',
+            'default' => $languageTexts,
+        ];
     }
 
     private function getSectionTranslations(): array
@@ -494,6 +574,8 @@ class FormClass extends AcymClass
 
     public function initEmptyForm(string $type): object
     {
+        $this->initSettings();
+
         $newForm = new \stdClass();
         $newForm->id = 0;
         $newForm->name = '';
@@ -557,15 +639,22 @@ class FormClass extends AcymClass
         return $form;
     }
 
-    public function prepareMenuHtml(object $form, string $type): array
+    public function prepareMenuHtml(object $form, string $type): void
     {
+        $this->initSettings();
+
         $sections = $this->getSectionTranslations();
-        $htmlMenu = [];
         foreach ($this->settings[$type] as $category => $options) {
-            $categoryOptions = [];
+            $hasOptions = false;
+
             foreach ($options as $key => $option) {
                 if (!empty($option['allowed_types']) && !in_array($form->type, $option['allowed_types'])) {
                     continue;
+                }
+
+                if (!$hasOptions) {
+                    $hasOptions = true;
+                    echo '<h3 class="cell acym__forms__menu__title acym__title acym__title__tertiary">'.acym_escapeHtml(acym_translation($sections[$category])).'</h3>';
                 }
 
                 $id = 'form_'.$category.'_'.$key;
@@ -573,26 +662,18 @@ class FormClass extends AcymClass
                 $vModel = 'form.settings.'.$category.'.'.$key;
                 $value = $form->settings[$category][$key] ?? $option['default'];
 
-                $label = '<label class="cell" for="'.$id.'">'.acym_translation($option['label']);
+                echo '<div class="cell grid-x acym__forms__menu__options grid-margin-x acym_vcenter">';
+
+                echo '<label class="cell" for="'.acym_escape($id).'">'.acym_escapeHtml(acym_translation($option['label']));
                 if (!empty($option['description'])) {
-                    $label .= acym_info(['textShownInTooltip' => $option['description']]);
+                    acym_info(['textShownInTooltip' => $option['description']]);
                 }
-                $label .= '</label>';
+                echo '</label>';
 
-                ob_start();
                 include acym_getPartial('fields', $option['type']);
-                $categoryOptions[$key] = $label.ob_get_clean();
-            }
-
-            if (!empty($categoryOptions)) {
-                $htmlMenu[] = [
-                    'title' => acym_translation($sections[$category]),
-                    'render' => $categoryOptions,
-                ];
+                echo '</div>';
             }
         }
-
-        return $htmlMenu;
     }
 
     public function renderForm(object $form, bool $edition = false, bool $isShortcode = false): string

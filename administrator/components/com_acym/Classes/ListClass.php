@@ -30,14 +30,37 @@ class ListClass extends AcymClass
                     unset($settings['columns'][$key]);
                     continue;
                 }
-                $settings['columns'][$key] = $key === 'join' ? $value : 'list.'.$value;
+                $settings['columns'][$key] = $key === 'join' ? acym_secureDBColumn($value) : 'list.'.acym_secureDBColumn($value);
             }
             $columns = implode(', ', $settings['columns']);
         }
 
         $query = 'SELECT '.$columns.' FROM #__acym_list AS list';
         $queryCount = 'SELECT COUNT(list.id) AS total FROM #__acym_list AS list';
-        if (!empty($settings['join'])) $query .= $this->getJoinForQuery($settings['join']);
+        if (!empty($settings['join'])) {
+            $join = $this->getJoinForQuery($settings['join']);
+            $query .= $join;
+            $queryCount .= $join;
+        }
+        /*
+        This query will return for example:
+
+        array(
+            6 => 0,
+            2 => 1,
+            5 => 2,
+            12 => 3
+        )
+
+        It would mean that:
+
+        6 lists are disabled and invisible 0 + (0*2) = 0
+        2 lists are active and invisible 1 + (0*2) = 1
+        5 lists are inactive and visible 0 + (1*2) = 2
+        12 lists are active and visible 1 + (1*2) = 3
+
+        So there are 2 + 12 active lists and 5 + 12 visible lists, get it?
+        */
         $queryStatus = 'SELECT COUNT(id) AS number, active + (visible*2) AS score FROM #__acym_list AS list';
         $filters = [];
         $listsId = [];
@@ -55,11 +78,19 @@ class ListClass extends AcymClass
             $filters[] = 'list.name LIKE '.acym_escapeDB('%'.$settings['search'].'%');
         }
 
-        if (!empty($settings['creator_id']) && !acym_isAdmin()) {
-            $userGroups = acym_getGroupsByUser($settings['creator_id']);
-            $groupCondition = '(list.access LIKE "%,'.implode(',%" OR list.access LIKE "%,', $userGroups).',%")';
+        if (!acym_isAdmin()) {
+            if (empty($settings['creator_id'])) {
+                $settings['creator_id'] = acym_currentUserId();
+            }
 
-            $filters[] = 'list.cms_user_id = '.intval($settings['creator_id']).' OR '.$groupCondition.'';
+            if (empty($settings['creator_id'])) {
+                $filters[] = 'list.id = 0';
+            } else {
+                $userGroups = acym_getGroupsByUser($settings['creator_id']);
+                $groupCondition = '(list.access LIKE "%,'.implode(',%" OR list.access LIKE "%,', $userGroups).',%")';
+
+                $filters[] = 'list.cms_user_id = '.intval($settings['creator_id']).' OR '.$groupCondition.'';
+            }
         }
 
         $filters[] = 'list.type = '.acym_escapeDB(self::LIST_TYPE_STANDARD);
@@ -78,7 +109,14 @@ class ListClass extends AcymClass
             if (empty($allowedStatus[$settings['status']])) {
                 die('Injection denied');
             }
-            $filters[] = 'list.'.$allowedStatus[$settings['status']];
+            $statusFilter = 'list.'.$allowedStatus[$settings['status']];
+
+            $selectedColumn = empty($settings['join']) ? '' : $this->getSelectedColumnForQuery($settings['join']);
+            if (!empty($selectedColumn)) {
+                $statusFilter .= ' OR '.acym_secureDBColumn($selectedColumn).' IS NOT NULL';
+            }
+
+            $filters[] = $statusFilter;
         }
 
         if (!empty($settings['where'])) {
@@ -198,6 +236,18 @@ class ListClass extends AcymClass
         return '';
     }
 
+    private function getSelectedColumnForQuery(string $joinType): string
+    {
+        if (strpos($joinType, 'join_mail') !== false) {
+            return 'maillist.list_id';
+        }
+        if (strpos($joinType, 'join_user') !== false) {
+            return 'userlist.list_id';
+        }
+
+        return '';
+    }
+
     public function getListsWithIdNameCount(array $settings): array
     {
         $filters = [];
@@ -302,7 +352,10 @@ class ListClass extends AcymClass
         $limit = $options['limit'] ?? 100;
         $status = $options['status'] ?? null;
         $orderBy = $options['orderBy'] ?? '';
-        $orderBySort = $options['orderBySort'] ?? '';
+        $orderBySort = strtolower((string)($options['orderBySort'] ?? ''));
+        if (!in_array($orderBySort, ['asc', 'desc'], true)) {
+            $orderBySort = empty($orderBy) ? 'asc' : 'desc';
+        }
         $subscribedAfter = $options['subscribed_after'] ?? null;
         $unsubscribedAfter = $options['unsubscribed_after'] ?? null;
 
@@ -329,9 +382,12 @@ class ListClass extends AcymClass
         $requestSub .= ' LEFT JOIN #__acym_user_has_list AS user_list ON user.id = user_list.user_id';
         $requestSub .= ' WHERE user.active = 1 AND user_list.list_id IN ('.implode(', ', $listIds).')'.$statusCondition;
 
-        if (!empty($orderBy)) {
-            if (empty($orderBySort)) $orderBySort = 'desc';
-            $requestSub .= ' ORDER BY '.acym_secureDBColumn($orderBy).' '.acym_secureDBColumn($orderBySort);
+        $orderByColumn = empty($orderBy) ? 'user.id' : acym_secureDBColumn($orderBy);
+        $requestSub .= ' ORDER BY '.$orderByColumn.' '.$orderBySort;
+
+        // Any other column can hold duplicates, we need a unique one to break the ties
+        if (!in_array($orderByColumn, ['id', 'user.id'], true)) {
+            $requestSub .= ', user.id ASC';
         }
 
         return acym_loadObjectList(
@@ -398,7 +454,7 @@ class ListClass extends AcymClass
         foreach ($list as $oneAttribute => $value) {
             if (empty($value)) continue;
 
-            $list->$oneAttribute = strip_tags($value);
+            $list->$oneAttribute = acym_stripTags($value);
         }
 
         if (empty($list->description)) {
@@ -522,6 +578,9 @@ class ListClass extends AcymClass
         return $lists;
     }
 
+    /**
+     * Sends the welcome emails attached to the specified lists
+     */
     public function sendWelcome(int $userID, array $listIDs, bool $forceFront = false): void
     {
         if (!$forceFront && acym_isAdmin()) {
@@ -546,6 +605,7 @@ class ListClass extends AcymClass
             $mailid = $oneMessage->welcome_id;
             if (empty($mailid)) continue;
 
+            //We don't send twice the same message
             if (isset($alreadySent[$mailid])) {
                 continue;
             }
@@ -556,6 +616,9 @@ class ListClass extends AcymClass
         }
     }
 
+    /**
+     * Sends the unsubscribe emails attached to the specified lists
+     */
     public function sendUnsubscribe(int $userID, array $listIDs): void
     {
         if (acym_isAdmin()) {
@@ -580,6 +643,7 @@ class ListClass extends AcymClass
             if (!empty($oneMessage->unsubscribe_id)) {
                 $mailid = $oneMessage->unsubscribe_id;
 
+                //We don't send twice the same message
                 if (isset($alreadySent[$mailid])) {
                     continue;
                 }
@@ -628,6 +692,9 @@ class ListClass extends AcymClass
         return intval(acym_loadResult($query));
     }
 
+    /**
+     * Get all mails attached to a list
+     */
     public function getMailsByListId(int $listId): array
     {
         $mailIds = acym_loadResultArray('SELECT mail_id FROM #__acym_mail_has_list WHERE list_id = '.intval($listId));
@@ -643,6 +710,12 @@ class ListClass extends AcymClass
             $condList = 'AND userList.list_id IN ('.implode(',', $listIds).')';
         }
 
+        /*
+         * score:
+         * An unconfirmed and active user will have a score of 0 + 1*2 = 2
+         * A confirmed and active user will have a score of 1 + 1*2 = 3
+         * A confirmed and inactive user will have a score of 1 + 0*2 = 1
+         */
         $query = 'SELECT userList.list_id, COUNT(userList.user_id) AS users, acyuser.confirmed + acyuser.active*2 AS score 
                     FROM #__acym_user_has_list AS userList 
                     JOIN #__acym_user AS acyuser 
@@ -659,6 +732,7 @@ class ListClass extends AcymClass
                 $listsUserStats[$oneResult->list_id] = $this->initList($oneResult->list_id);
             }
 
+            // Joomla 4 casts the result into an int
             $oneResult->score = (string)$oneResult->score;
 
             if (in_array($oneResult->score, ['0', '1'])) {
@@ -721,19 +795,22 @@ class ListClass extends AcymClass
 
     public function getYearSubEvolutionPerList(int $listId): array
     {
-        $month = date('n') + 1;
-        $year = date('Y') - 1;
+        // Get next month from 1 year ago
+        $month = gmdate('n') + 1;
+        $year = gmdate('Y') - 1;
         $initDate = $year.'-'.$month.'-01';
         if ($month == 13) {
-            $initDate = date('Y').'-01-01';
+            $initDate = gmdate('Y').'-01-01';
         }
 
+        // Get new subscribers per month
         $queryEvolSub = 'SELECT MONTH(subscription_date) as monthSub, DATE_FORMAT(subscription_date,"%Y_%m") AS unit, COUNT(user_id) AS nbUser';
         $queryEvolSub .= ' FROM `#__acym_user_has_list`';
         $queryEvolSub .= ' WHERE subscription_date >= "'.$initDate.'" AND list_id = '.$listId;
         $queryEvolSub .= ' GROUP BY unit';
         $evolSubscibers = acym_loadObjectList($queryEvolSub, 'unit');
 
+        // Get unsubscribers per month
         $queryEvolUnsub = 'SELECT MONTH(unsubscribe_date) as monthUnsub, DATE_FORMAT(unsubscribe_date,"%Y_%m") AS unit, COUNT(user_id) AS nbUser';
         $queryEvolUnsub .= ' FROM `#__acym_user_has_list`';
         $queryEvolUnsub .= ' WHERE unsubscribe_date >= "'.$initDate.'" AND list_id = '.$listId;
@@ -787,7 +864,7 @@ class ListClass extends AcymClass
 
     public function hasUserAccess(int $listId): bool
     {
-        if (acym_isAdmin()) {
+        if (acym_isAdmin() && acym_isAllowed('lists')) {
             return true;
         }
 
@@ -829,6 +906,9 @@ class ListClass extends AcymClass
             return false;
         }
 
+        acym_arrayToInteger($listIds);
+        $listIds = array_filter($listIds);
+
         if (!$this->removeWelcomeUnsubByMailId($mailId, $listIds, $column)) {
             return false;
         }
@@ -836,7 +916,7 @@ class ListClass extends AcymClass
         foreach ($listIds as $listId) {
             $list = $this->getOneById($listId);
             if (empty($list)) {
-                return false;
+                continue;
             }
 
             $list->{$column} = $mailId;

@@ -39,7 +39,8 @@ trait Patchv8
                 PRIMARY KEY (`id`),
                 INDEX `index_#__acym_mailbox_action1`(`name` ASC)
             )
-                ENGINE = InnoDB;'
+                ENGINE = InnoDB
+                /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci*/;'
         );
     }
 
@@ -273,7 +274,8 @@ trait Patchv8
                         ON DELETE NO ACTION
                         ON UPDATE NO ACTION
             )
-                ENGINE = InnoDB;'
+                ENGINE = InnoDB
+                /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci*/;'
         );
     }
 
@@ -296,6 +298,7 @@ trait Patchv8
         );
 
         if (!empty($mailsToClean)) {
+            acym_arrayToInteger($mailsToClean);
             $this->updateQuery('DELETE FROM #__acym_mail_archive WHERE mail_id IN ('.implode(',', $mailsToClean).')');
             $mailClass = new MailClass();
             $mailClass->delete($mailsToClean);
@@ -361,6 +364,7 @@ trait Patchv8
             return;
         }
 
+        // Replace backslashes by slashes in the upload folder option
         $uploadFolder = $config->get('uploadfolder');
         if (!empty($uploadFolder) && strpos($uploadFolder, '\\') !== false) {
             $uploadFolder = str_replace('\\', '/', $uploadFolder);

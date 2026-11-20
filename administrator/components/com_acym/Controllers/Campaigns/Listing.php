@@ -19,7 +19,6 @@ trait Listing
 
     public function storeRedirectListing(bool $fromListing = false): void
     {
-        acym_session();
         $isFrontJoomla = !acym_isAdmin() && ACYM_CMS === 'joomla';
         $variableName = $isFrontJoomla ? 'ctrl_stored_front' : 'ctrl_stored';
 
@@ -28,8 +27,11 @@ trait Listing
             return;
         }
 
-        if ((empty($currentTask) || !in_array($currentTask, self::TASKS_TO_REMEMBER_FOR_LISTING)) && !empty($_SESSION[$variableName])) {
-            $taskToGo = is_array($_SESSION[$variableName]) ? $_SESSION[$variableName]['task'].'&type='.$_SESSION[$variableName]['type'] : $_SESSION[$variableName];
+        $controller = acym_getVar('RAW', $variableName, null, 'SESSION');
+        if ((empty($currentTask) || !in_array($currentTask, self::TASKS_TO_REMEMBER_FOR_LISTING)) && !empty($controller)) {
+            $taskToGo = is_array($controller)
+                ? $controller['task'].'&type='.$controller['type']
+                : $controller;
             $link = acym_completeLink(($isFrontJoomla ? 'front' : '').'campaigns&task='.$taskToGo, false, true);
             acym_redirect($link);
         } else {
@@ -42,7 +44,7 @@ trait Listing
                 $currentTask = empty($type) ? self::TASK_TYPE_CAMPAIGN : ['task' => $currentTask, 'type' => $type];
             }
 
-            $_SESSION[$variableName] = $currentTask;
+            acym_setSession($variableName, $currentTask);
         }
 
         $taskToCall = is_array($currentTask) ? $currentTask['task'] : $currentTask;
@@ -65,8 +67,7 @@ trait Listing
 
         $isFrontJoomla = !acym_isAdmin() && ACYM_CMS === 'joomla';
         $variableName = $isFrontJoomla ? 'ctrl_stored_front' : 'ctrl_stored';
-        acym_session();
-        $_SESSION[$variableName] = $task;
+        acym_setSession($variableName, $task);
 
         return true;
     }
@@ -84,6 +85,7 @@ trait Listing
 
         $data = [
             'type' => $type,
+            //We set campaign here to generate the statuses in the campaign class in the function getCountStatusFilter
             'campaign_type' => 'campaigns',
         ];
         $this->getAllParamsRequest($data);
@@ -134,11 +136,11 @@ trait Listing
         $data['status'] = '';
         if (isset($data['campaign_type'])) {
             $data['status'] = $this->getVarFiltersListing('string', $data['campaign_type'].'_status', '');
-            $data['ordering'] = $this->getVarFiltersListing('string', $data['campaign_type'].'_ordering', 'id');
-            $data['orderingSortOrder'] = $this->getVarFiltersListing('string', $data['campaign_type'].'_ordering_sort_order', 'desc');
+            $data['ordering'] = $this->getVarFiltersListing('cmd', $data['campaign_type'].'_ordering', 'id');
+            $data['orderingSortOrder'] = $this->getVarFiltersListing('cmd', $data['campaign_type'].'_ordering_sort_order', 'desc');
         } elseif (isset($data['email_type'])) {
-            $data['ordering'] = $this->getVarFiltersListing('string', $data['email_type'].'_ordering', 'id');
-            $data['orderingSortOrder'] = $this->getVarFiltersListing('string', $data['email_type'].'_ordering_sort_order', 'desc');
+            $data['ordering'] = $this->getVarFiltersListing('cmd', $data['email_type'].'_ordering', 'id');
+            $data['orderingSortOrder'] = $this->getVarFiltersListing('cmd', $data['email_type'].'_ordering_sort_order', 'desc');
         }
 
         if (!empty($data['tag'])) {
@@ -160,10 +162,12 @@ trait Listing
 
     public function prepareEmailsListing(array &$data, string $campaignType = '', string $class = ''): void
     {
+        // Prepare the pagination
         $campaignsPerPage = $data['pagination']->getListLimit();
         $page = $this->getVarFiltersListing('int', 'campaigns_pagination_page', 1);
         $status = $data['status'];
 
+        // Get the matching campaigns
         $matchingCampaigns = $this->getMatchingElementsFromData(
             [
                 'element_tab' => $campaignType,

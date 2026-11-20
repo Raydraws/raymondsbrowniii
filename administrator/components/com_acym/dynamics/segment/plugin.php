@@ -1,4 +1,5 @@
 <?php
+defined('_JEXEC') || die('Restricted Access');
 
 use AcyMailing\Core\AcymPlugin;
 

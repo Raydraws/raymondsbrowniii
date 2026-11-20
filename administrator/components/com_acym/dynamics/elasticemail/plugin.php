@@ -1,5 +1,6 @@
 <?php
 
+use AcyMailerPhp\Mailer;
 use AcyMailing\Classes\CampaignClass;
 use AcyMailing\Classes\MailClass;
 use AcyMailing\Helpers\MailerHelper;
@@ -32,29 +33,27 @@ class plgAcymElasticemail extends AcymPlugin
 
     public function onAcymGetSendingMethodsHtmlSetting(&$data)
     {
-        ob_start();
         ?>
-		<div class="send_settings grid-x cell" id="<?php echo self::SENDING_METHOD_ID; ?>_settings">
+		<div class="send_settings grid-x cell" id="<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_settings">
 			<div class="cell grid-x acym_vcenter acym__sending__methods__one__settings">
-				<label for="<?php echo self::SENDING_METHOD_ID; ?>_password" class="cell shrink margin-right-1">
-                    <?php echo acym_translation('ACYM_API_KEY'); ?>
+				<label for="<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_password" class="cell shrink margin-right-1">
+                    <?php echo acym_escapeHtml(acym_translation('ACYM_API_KEY')); ?>
 				</label>
                 <?php
-                echo $this->getLinks(
+                $this->getLinks(
                     'https://elasticemail.com/referral-reward?r=7b884a0b-b979-4473-8803-06ae39d76599',
                     'https://elasticemail.com/email-api-pricing?r=7b884a0b-b979-4473-8803-06ae39d76599'
                 );
                 ?>
-				<input id="<?php echo self::SENDING_METHOD_ID; ?>_password"
-					   class="cell"
-					   type="text"
-					   name="config[<?php echo self::SENDING_METHOD_ID; ?>_password]"
-					   value="<?php echo str_repeat('*', strlen($this->config->get(self::SENDING_METHOD_ID.'_password'))); ?>">
-                <?php echo $this->getTestCredentialsSendingMethodButton(self::SENDING_METHOD_ID); ?>
+				<input id="<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_password"
+				       class="cell"
+				       type="text"
+				       name="config[<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_password]"
+				       value="<?php echo acym_escape(str_repeat('*', strlen($this->config->get(self::SENDING_METHOD_ID.'_password')))); ?>">
+                <?php $this->getTestCredentialsSendingMethodButton(self::SENDING_METHOD_ID); ?>
 			</div>
 		</div>
         <?php
-        $data['sendingMethodsHtmlSettings'][self::SENDING_METHOD_ID] = ob_get_clean();
     }
 
     public function onAcymTestCredentialSendingMethod($sendingMethod, $credentials)
@@ -94,6 +93,7 @@ class plgAcymElasticemail extends AcymPlugin
         array        $attachments = [],
                      $sendingMethodListParams = []
     ): void {
+        // https://elasticemail.com/developers/api-documentation/rest-api#operation/emailsTransactionalPost
         if ($mailerHelper->externalMailer !== self::SENDING_METHOD_ID) {
             return;
         }
@@ -175,6 +175,7 @@ class plgAcymElasticemail extends AcymPlugin
         if (!$this->attachmentsFetched) {
             $this->attachmentsFetched = true;
 
+            // Uploaded attachments expire after 35 days by default, so 1000 should be more than enough
             $uploadedAttachments = $this->callApiSendingMethod(
                 self::SENDING_METHOD_API_URL.'files?limit=1000',
                 [],
@@ -217,11 +218,13 @@ class plgAcymElasticemail extends AcymPlugin
 
     private function handleHeaders(array &$data, MailerHelper $mailerHelper): void
     {
+        $data['content']->Headers = new stdClass();
+        $data['content']->Headers->Date = Mailer::rfcDate();
+
         if (empty($mailerHelper->CustomHeader)) {
             return;
         }
 
-        $data['content']->Headers = new stdClass();
         foreach ($mailerHelper->CustomHeader as $oneHeader) {
             $data['content']->Headers->{$oneHeader[0]} = $oneHeader[1];
         }
@@ -294,6 +297,7 @@ class plgAcymElasticemail extends AcymPlugin
 
     private function cleanFileName(string $fileName): string
     {
+        // Replace accents with their non-accented equivalent
         if (function_exists('iconv')) {
             $fileName = iconv('UTF-8', 'ASCII//TRANSLIT', $fileName);
         }

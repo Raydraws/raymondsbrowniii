@@ -16,12 +16,13 @@ class UpdateHelper extends AcymObject
     use Update\Patchv8;
     use Update\Patchv9;
     use Update\Patchv10;
+    use Update\Patchv11;
 
     const FIRST_EMAIL_NAME_KEY = 'ACYM_FIRST_EMAIL_NAME';
-    const BOUNCE_VERSION = 6;
+    const BOUNCE_VERSION = 9;
 
-    private string $level = 'starter';
-    private string $version = '10.7.1';
+    private string $level = 'essential';
+    private string $version = '11.1.2';
     private string $previousVersion;
     private bool $isUpdating = false;
 
@@ -29,11 +30,12 @@ class UpdateHelper extends AcymObject
 
     public function deleteNewSplashScreenInstall(): void
     {
+        // First installation or installing the same version => don't show the splashscreen
         if (!$this->isUpdating || (!empty($this->previousVersion) && version_compare($this->previousVersion, $this->version, '='))) {
             $splashscreenJson = ACYM_PARTIAL.'update'.DS.'changelogs_splashscreen.json';
 
             if (file_exists($splashscreenJson)) {
-                @unlink($splashscreenJson);
+                acym_deleteFile($splashscreenJson);
             }
         }
     }
@@ -45,7 +47,7 @@ class UpdateHelper extends AcymObject
         $pluginClass = new PluginClass();
         $pluginsToUpdate = $pluginClass->getNotUptoDatePlugins();
         foreach ($pluginsToUpdate as $onePlugin) {
-            $pluginClass->updateAddon($onePlugin);
+            $pluginClass->updateAddon($onePlugin, false);
         }
     }
 
@@ -58,7 +60,7 @@ class UpdateHelper extends AcymObject
         }
 
         if ($res === null) {
-            $message = isset($e) ? $e->getMessage() : substr(strip_tags(acym_getDBError()), 0, 200).'...';
+            $message = isset($e) ? $e->getMessage() : substr(acym_stripTags(acym_getDBError()), 0, 200).'...';
 
             if ($messageType === 'enqueue') {
                 acym_enqueueMessage($message, 'error');

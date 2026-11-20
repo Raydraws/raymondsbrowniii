@@ -13,13 +13,16 @@ use AcyMailing\Classes\UserClass;
 use AcyMailerPhp\Exception;
 use AcyMailerPhp\OAuth;
 use AcyMailerPhp\Mailer;
-use Pelago\Emogrifier\CssInliner;
-use Pelago\Emogrifier\HtmlProcessor\HtmlPruner;
+use AcyMailing\Libraries\Pelago\Emogrifier\CssInliner;
+use AcyMailing\Libraries\Pelago\Emogrifier\HtmlProcessor\HtmlPruner;
 
 class MailerHelper extends Mailer
 {
     const NEW_TRY_ERRORS = [1, 6];
+    const REGEX_URL = '#<[^>]* href[ ]*=[ ]*"(?!mailto:|\#|ymsgr:|callto:|file:|ftp:|webcal:|skype:|tel:)([^"]+)"#Ui';
+    const AUTOLOGIN_PARAMS = 'autoSubId=%7Bsubscriber:id%7D&amp;subKey=%7Bsubscriber:autologin_token%7Curlencode%7D';
 
+    // Redefine PHPMailer protected attributes for dynamic texts system
     public $to = [];
     public $cc = [];
     public $bcc = [];
@@ -48,26 +51,33 @@ class MailerHelper extends Mailer
     public bool $report = true;
     public bool $alreadyCheckedAddresses = false;
     public int $errorNumber = 0;
+    // Can be used when our sending method is temporary unavailable to not count it as a "real" failed
     public bool $failedCounting = true;
 
+    // Used by external code
     public bool $autoAddUser = false;
     public bool $userCreationTriggers = true;
 
     public string $reportMessage = '';
     public bool $dtextsFailed = false;
 
+    // Should we track the sending of a	message (used for welcoming message)
     public bool $trackEmail = false;
 
+    // Sending method used in the configuration
     public string $externalMailer;
 
+    // To import custom stylesheet from user
     public string $stylesheet = '';
     public array $settings;
 
+    // Used to store special dynamic text content
     public array $parameters = [];
 
     private string $userLanguage = '';
     private string $receiverEmail;
 
+    // Special send statuses
     private object $overrideEmailToSend;
     public bool $isTest = false;
     public bool $isSpamTest = false;
@@ -79,8 +89,10 @@ class MailerHelper extends Mailer
     public string $links_language;
     public int $id = 0;
     public ?object $mail = null;
+    // Mail objects with replaceContent ran
     private array $defaultMail = [];
 
+    // Sending method list plugin
     public array $listsIds = [];
     private string $currentSendingMethod = '';
     private array $currentMethodSetting = [];
@@ -95,6 +107,7 @@ class MailerHelper extends Mailer
     {
         parent::__construct();
 
+        // The DKIM fails when the X-Mailer is added and the user uses their own keys, it makes no sense D:
         $this->XMailer = ' ';
         $this->SMTPAutoTLS = false;
 
@@ -117,9 +130,11 @@ class MailerHelper extends Mailer
 
         $this->setSendingMethodSetting();
 
+        //Do we have a DKIM validation?
         if ($this->config->get('dkim', 0) && $this->Mailer != 'elasticemail') {
             $this->DKIM_domain = $this->config->get('dkim_domain');
             $this->DKIM_selector = $this->config->get('dkim_selector', 'acy');
+            //Just in case of...
             if (empty($this->DKIM_selector)) $this->DKIM_selector = 'acy';
             $this->DKIM_passphrase = $this->config->get('dkim_passphrase');
             $this->DKIM_identity = $this->config->get('dkim_identity');
@@ -127,6 +142,7 @@ class MailerHelper extends Mailer
             $this->DKIM_private_string = trim($this->config->get('dkim_private'));
         }
 
+        //Set the Charset, by default 'utf-8'
         $this->CharSet = strtolower($this->config->get('charset'));
         if (empty($this->CharSet)) {
             $this->CharSet = 'utf-8';
@@ -134,27 +150,28 @@ class MailerHelper extends Mailer
 
         $this->clearAll();
 
+        //Set the encoding format, should be 8 bit by default.
         $this->Encoding = $this->config->get('encoding_format');
         if (empty($this->Encoding)) {
             $this->Encoding = '8bit';
         }
 
+        // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- This is for big regex, the default value is 100 000.
         @ini_set('pcre.backtrack_limit', 1000000);
 
         $this->SMTPOptions = ['ssl' => ['verify_peer' => false, 'verify_peer_name' => false, 'allow_self_signed' => true]];
-
-        $this->addParamInfo();
     }
 
     public function setSendingMethodSetting(): void
     {
         $externalSendingMethod = [];
         acym_trigger('onAcymGetSendingMethods', [&$externalSendingMethod, true]);
-        $externalSendingMethod = array_keys($externalSendingMethod['sendingMethods']);
+        $externalSendingMethod = !empty($externalSendingMethod['sendingMethods']) ? array_keys($externalSendingMethod['sendingMethods']) : [];
 
         $mailerMethodConfig = $this->getSendingMethod();
         $this->currentSendingMethod = $mailerMethodConfig;
 
+        // Default mailer is to use PHP's mail function
         if ($mailerMethodConfig === 'google') {
             $this->isSMTP();
             $this->Host = 'smtp.gmail.com:465';
@@ -167,6 +184,7 @@ class MailerHelper extends Mailer
                 new OAuth(
                     [
                         'sendingMethod' => 'google',
+                        // https://developers.google.com/identity/protocols/oauth2/web-server#httprest_8
                         'tokenGenerationUrl' => 'https://oauth2.googleapis.com/token',
                         'userName' => $this->Username,
                         'clientId' => trim($this->getSendingMethodSettings('google_client_id')),
@@ -183,7 +201,7 @@ class MailerHelper extends Mailer
             }
         } elseif ($mailerMethodConfig === 'outlook') {
             $this->isSMTP();
-            $tenant = trim($this->getSendingMethodSettings('outlook_tenant', 'consumers'));
+            $tenant = trim($this->getSendingMethodSettings('outlook_tenant')) ?: 'consumers';
             $host = $tenant === 'consumers' ? 'smtp-mail.outlook.com' : 'smtp.office365.com';
             $this->Host = $host.':587';
             $this->SMTPAuth = true;
@@ -195,6 +213,7 @@ class MailerHelper extends Mailer
                 new OAuth(
                     [
                         'sendingMethod' => 'outlook',
+                        // https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-auth-code-flow#refresh-the-access-token
                         'tokenGenerationUrl' => 'https://login.microsoftonline.com/'.$tenant.'/oauth2/v2.0/token',
                         'userName' => $this->Username,
                         'clientId' => trim($this->getSendingMethodSettings('outlook_client_id')),
@@ -213,6 +232,7 @@ class MailerHelper extends Mailer
             $this->isSMTP();
             $this->Host = trim($this->getSendingMethodSettings('smtp_host'));
             $port = $this->getSendingMethodSettings('smtp_port');
+            // 465 is default port for SSL
             if (empty($port) && $this->getSendingMethodSettings('smtp_secured') === 'ssl') {
                 $port = 465;
             }
@@ -268,6 +288,9 @@ class MailerHelper extends Mailer
         }
     }
 
+    /**
+     * Dynamically called from PHPMailer
+     */
     protected function externalSend(string $MIMEHeader, string $MIMEBody): bool
     {
         $fromName = empty($this->FromName) ? $this->config->get('from_name') : $this->FromName;
@@ -329,6 +352,7 @@ class MailerHelper extends Mailer
             }
         }
 
+        //Check if there is at least one reply to otherwise add the default one.
         if (empty($this->ReplyTo) && empty($this->ReplyToQueue)) {
             if (!empty($this->replyemail)) {
                 $replyToEmail = $this->replyemail;
@@ -349,6 +373,7 @@ class MailerHelper extends Mailer
             $this->acymAddReplyTo($replyToEmail, $replyToName);
         }
 
+        // Embed images if there are images to embed
         $shouldEmbed = $this->config->get('embed_images', 0);
         if (intval($shouldEmbed) === 1 && $this->Mailer !== 'elasticemail') {
             $this->embedImages();
@@ -376,6 +401,7 @@ class MailerHelper extends Mailer
                 return false;
             }
 
+            //Check the from address
             if (empty($this->From) || !acym_isValidEmail($this->From)) {
                 $this->reportMessage = acym_translation('ACYM_VALID_EMAIL').' ( '.acym_translation('ACYM_FROM_EMAIL').' : '.$this->From.' ) ';
                 $this->errorNumber = 9;
@@ -401,8 +427,11 @@ class MailerHelper extends Mailer
             @file_put_contents(ACYM_ROOT.'acydebug_mail.html', $this->Body);
         }
 
+        //We will change the encoding format in case of its needed...
+        //We always come from utf-8 to transform to something else!
         $this->Body = htmlentities($this->Body);
         $this->Body = htmlspecialchars_decode($this->Body);
+        //Fix The Bat issues for special encoding as &sigmaf; was interpreted as &sigma;f;...
         $this->Body = str_replace(['&amp;', '&sigmaf;'], ['&', 'ς'], $this->Body);
 
         if ($this->CharSet !== 'utf-8') {
@@ -410,12 +439,14 @@ class MailerHelper extends Mailer
             $this->Subject = $this->encodingHelper->change($this->Subject, 'UTF-8', $this->CharSet);
         }
 
+        // These characters can break the send process, let's remove them from the subject
         $this->Subject = str_replace(
             ['’', '“', '”', '–'],
             ["'", '"', '"', '-'],
             $this->Subject
         );
 
+        // BE CAREFUL! This space is not a space, it's a ALT0160 chr(194) by char(32) which means almost &nbsp;
         $this->Body = str_replace(" ", ' ', $this->Body);
 
         $externalSending = false;
@@ -448,6 +479,7 @@ class MailerHelper extends Mailer
         }
 
 
+        //display error if bloque is displayed... for free.fr especially
         if (!empty($warnings) && strpos($warnings, 'bloque')) {
             $result = false;
         }
@@ -469,6 +501,7 @@ class MailerHelper extends Mailer
             }
             $this->errorNumber = 1;
             if ($this->report) {
+                //We display the report here... we add a link to our doc for the "could not instantiate mail function".
                 $this->reportMessage = str_replace(
                     'Could not instantiate mail function',
                     '<a target="_blank" href="'.ACYM_DOCUMENTATION.'faq/could-not-instantiate-mail-function">'.acym_translation('ACYM_COUND_NOT_INSTANCIATE_MAIL_FUCNTION').'</a>',
@@ -517,6 +550,7 @@ class MailerHelper extends Mailer
 
     public function load(int $mailId, ?object $user = null): ?object
     {
+        // If it's already loaded return the email
         if (isset($this->defaultMail[$mailId])) {
             return $this->defaultMail[$mailId];
         }
@@ -557,6 +591,7 @@ class MailerHelper extends Mailer
             $this->setFrom($this->getSendSettings('from_email'), $this->getSendSettings('from_name'));
         }
 
+        //We could not load the email...
         if (empty($this->defaultMail[$mailId]->id)) {
             unset($this->defaultMail[$mailId]);
 
@@ -579,6 +614,9 @@ class MailerHelper extends Mailer
 
         $this->mailId = $mailId;
         $this->id = $this->mailId;
+        if (empty($this->defaultMail[$mailId]->language)) {
+            $this->defaultMail[$mailId]->language = acym_getDefaultNewsletterLanguage();
+        }
         $this->mail = clone $this->defaultMail[$mailId];
         acym_trigger('replaceContent', [&$this->defaultMail[$mailId], true]);
 
@@ -590,6 +628,14 @@ class MailerHelper extends Mailer
         return $this->defaultMail[$mailId];
     }
 
+    /**
+     * @param int|string        $mailId  The mail Id
+     * @param int|string|object $user    Can be the user Id, an email address or the user object
+     * @param array             $options Additional options for bcc, attachments, etc...
+     *
+     * @return bool
+     * @throws Exception
+     */
     public function sendOne($mailId, $user, array $options = []): bool
     {
         $this->clearAll();
@@ -600,7 +646,7 @@ class MailerHelper extends Mailer
 
         if (empty($receiver->email)) {
             $this->errorNumber = 4;
-            $this->reportMessage = acym_translationSprintf('ACYM_SEND_ERROR_USER', '<b><i>'.acym_escape($user).'</i></b>');
+            $this->reportMessage = acym_translationSprintf('ACYM_SEND_ERROR_USER', '<b><i>'.acym_escapeHtml(is_object($user) ? $user->email : $user).'</i></b>');
             if ($this->report) {
                 acym_enqueueMessage($this->reportMessage, 'error');
             }
@@ -608,9 +654,11 @@ class MailerHelper extends Mailer
             return false;
         }
 
+        // Can be a string for Joomla 3 and WordPress
         $mailId = intval($mailId);
         $receiver->id = intval($receiver->id);
 
+        // Load the mail with global tags replaced
         if (!$this->load($mailId, $receiver)) {
             $this->reportMessage = 'Can not load the email with ID n°'.$mailId;
             $this->errorNumber = 2;
@@ -624,17 +672,17 @@ class MailerHelper extends Mailer
 
         $this->prepareContent($mailId, $options);
         $this->prepareHeaders($mailId, $receiver->id, $options);
-        $this->prepareAddresses($mailId, $receiver);
+        $this->prepareAddresses($mailId, $receiver, $options);
         $this->prepareBcc($mailId, $options);
         $this->prepareAttachments($mailId, $options);
         $this->replaceDynamicContent($mailId);
         $this->prepareTracking($mailId, $receiver);
-
         if (!$this->handleDtexts($receiver)) {
             $this->dtextsFailed = true;
 
             return false;
         }
+
         $status = $this->send();
 
         $this->initStatistics($status, $receiver->id);
@@ -677,7 +725,7 @@ class MailerHelper extends Mailer
         $followUpClass->triggerFollowUp(intval($followUp->id), intval($userId), $delay, $mailToSkip);
     }
 
-    public function statClick(int $mailId, int $userid, bool $fromStat = false): void
+    public function statClick(int $mailId, int $userid, bool $fromStat = false, string $userkey = ''): void
     {
         if (!$fromStat && !in_array($this->type, MailClass::TYPES_WITH_STATS)) {
             return;
@@ -700,7 +748,7 @@ class MailerHelper extends Mailer
             $utmCampaign = acym_getAlias($mail->subject);
         }
 
-        preg_match_all('#<[^>]* href[ ]*=[ ]*"(?!mailto:|\#|ymsgr:|callto:|file:|ftp:|webcal:|skype:|tel:)([^"]+)"#Ui', $this->body, $results);
+        preg_match_all(self::REGEX_URL, $this->body, $results);
         if (empty($results)) {
             return;
         }
@@ -713,6 +761,7 @@ class MailerHelper extends Mailer
                     continue;
                 }
 
+                // Handle the Outlook buttons that double the link, we need to consider it as the same link that's on the main button element
                 $previousIsOutlook = false;
                 if (strpos($results[0][$key], '<v:roundrect') === 0) {
                     $previousLinkHandled = $results[0][$key];
@@ -752,6 +801,7 @@ class MailerHelper extends Mailer
         foreach ($results[1] as $i => $url) {
             $urlsNotToTrack = [
                 'task=unsub',
+                'task=disableTracking',
                 'fonts.googleapis.com',
             ];
 
@@ -764,20 +814,28 @@ class MailerHelper extends Mailer
                 }
             }
 
+            //We don't track unsubscribe link
             if (isset($urls[$results[0][$i]]) || !$track) {
                 continue;
             }
 
+            //We often need to check if the url is within the website... but we don't care about http or https
             $simplifiedUrl = str_replace(['https://', 'http://', 'www.'], '', $url);
             $simplifiedWebsite = str_replace(['https://', 'http://', 'www.'], '', ACYM_LIVE);
             $internalUrl = strpos($simplifiedUrl, rtrim($simplifiedWebsite, '/')) === 0;
 
+            // If this is an internal url
+            //$subfolder : Record if the subfolder exists or not in which case it will be an external link
             $subfolder = false;
             if ($internalUrl) {
                 $urlWithoutBase = str_replace($simplifiedWebsite, '', $simplifiedUrl);
+                // If there is a /, it means there could be a sub-folder
+                //It can be separated with a ? as well like administrator?option=com_content
                 if (strpos($urlWithoutBase, '/') || strpos($urlWithoutBase, '?')) {
+                    // Get the supposed sub-folder name
                     $slashPosition = strpos($urlWithoutBase, '/');
                     $folderName = substr($urlWithoutBase, 0, !$slashPosition ? strpos($urlWithoutBase, '?') : $slashPosition);
+                    //There is no dot in a folder!
                     if (strpos($folderName, '.') === false) {
                         $subfolder = @is_dir(ACYM_ROOT.$folderName);
                     }
@@ -794,6 +852,7 @@ class MailerHelper extends Mailer
                 $args[] = empty($campaign->sending_params['utm_source']) ? 'utm_source=newsletter_'.$idToUse : 'utm_source='.urlencode($campaign->sending_params['utm_source']);
                 $args[] = empty($campaign->sending_params['utm_medium']) ? 'utm_medium=email' : 'utm_medium='.urlencode($campaign->sending_params['utm_medium']);
                 $args[] = empty($campaign->sending_params['utm_campaign']) ? 'utm_campaign='.$utmCampaign : 'utm_campaign='.urlencode($campaign->sending_params['utm_campaign']);
+                //If we have an anchor we need to remove it and add it to the end of the url
                 $anchor = '';
                 if (strpos($url, '#') !== false) {
                     $anchor = substr($url, strpos($url, '#'));
@@ -805,38 +864,28 @@ class MailerHelper extends Mailer
                 } else {
                     $mytracker = $url.'?'.implode('&', $args);
                 }
+                //We add back the anchor if we had one
                 $mytracker .= $anchor;
                 $urls[$results[0][$i]] = str_replace($results[1][$i], $mytracker, $results[0][$i]);
 
+                //Set the url variable so that we can use it later on...
                 $url = $mytracker;
             }
 
             if (strpos($trackingSystem, 'acymailing') !== false) {
-                $isAutologin = false;
-                $autologinParams = 'autoSubId=%7Bsubscriber:id%7D&amp;subKey=%7Bsubscriber:key%7Curlencode%7D';
-                if (strpos($url, $autologinParams) !== false) {
-                    $isAutologin = true;
-                    $url = str_replace(
-                        [
-                            '?'.$autologinParams.'&amp;',
-                            '?'.$autologinParams,
-                            '&amp;'.$autologinParams,
-                        ],
-                        [
-                            '?',
-                            '',
-                            '',
-                        ],
-                        $url
-                    );
+                $isAutologin = strpos($url, self::AUTOLOGIN_PARAMS) !== false;
+                if ($isAutologin) {
+                    $url = $this->stripAutologinParams($url);
                 }
 
-                if (preg_match('#passw|modify|\{|%7B#i', $url)) {
+                if (preg_match('#passw|modify#i', $url)) {
                     continue;
                 }
 
+                $urlForRegistration = $url;
+
                 if (!$fromStat) {
-                    $mytracker = $urlClass->getUrl($url, $mailId, $userid);
+                    $mytracker = $urlClass->getUrl($urlForRegistration, $mailId, $userid, $userkey);
                 }
 
                 if (empty($mytracker)) {
@@ -844,8 +893,8 @@ class MailerHelper extends Mailer
                 }
 
                 if ($isAutologin) {
-                    $mytracker .= strpos($mytracker, '?') === false ? '?' : '&amp;';
-                    $mytracker .= $autologinParams;
+                    $separator = strpos($mytracker, '?') === false ? '?' : '&amp;';
+                    $mytracker .= $separator.self::AUTOLOGIN_PARAMS;
                 }
 
                 $urls[$results[0][$i]] = str_replace($results[1][$i], $mytracker, $results[0][$i]);
@@ -857,10 +906,15 @@ class MailerHelper extends Mailer
 
     public function textVersion(string $html, bool $fullConvert = true): string
     {
+        //Replace relative links into absolute before replacing the text version so that we keep correct urls
         $html = acym_absoluteURL($html);
 
+        //If we come from a text version, we don't want to replace the spaces.
+        //We will only do that if we come from an HTML Version to avoid breaking the user code
         if ($fullConvert) {
+            //As in HTML multiple spaces are interpreted as only one space, we remove the multiple spaces for the text version
             $html = preg_replace('# +#', ' ', $html);
+            //Same thing, return chars don't exist in html so we can simply remove them, neither \t
             $html = str_replace(["\n", "\r", "\t"], '', $html);
         }
 
@@ -890,13 +944,18 @@ class MailerHelper extends Mailer
             $html
         );
 
+        //The striptags function may not do the job properly in some cases...
         $text = preg_replace('#(&lt;|&\#60;)([^ \n\r\t])#i', '&lt; ${2}', $text);
 
-        $text = str_replace([" ", "&nbsp;"], ' ', strip_tags($text));
+        //BE CAREFUL!!!! This space is not a space, it's a ALT0160!! which means &nbsp;
+        $text = str_replace([" ", "&nbsp;"], ' ', acym_stripTags($text));
+        //BE CAREFUL!! That is magic code :) :) :)
 
+        //@ is added on the call of html_entity_decode because on PHP 4, warnings are displayed using this function with utf-8 characters.
         $text = trim(@html_entity_decode($text, ENT_QUOTES, 'UTF-8'));
 
         if ($fullConvert) {
+            //We do that one more time as some extra spaces may have appeared
             $text = preg_replace('# +#', ' ', $text);
             $text = preg_replace('#\n *\n\s+#', "\n\n", $text);
         }
@@ -904,6 +963,9 @@ class MailerHelper extends Mailer
         return $text;
     }
 
+    /**
+     * @throws Exception
+     */
     protected function embedImages(): bool
     {
         preg_match_all('/(src|background)=[\'|"]([^"\']*)[\'|"]/Ui', $this->Body, $images);
@@ -928,33 +990,41 @@ class MailerHelper extends Mailer
         $allImages = [];
 
         foreach ($images[2] as $i => $url) {
+            //We don't add twice the same images otherwise there is a bug
+            //and the picture is really attached but not in hidden base64
             if (isset($allImages[$url])) {
                 continue;
             }
 
+            // Don't embed images with a controller, most likely the stats picture
             if (strpos($url, 'ctrl=') !== false) {
                 continue;
             }
 
             $allImages[$url] = 1;
 
+            // We convert the url into local directory
             $path = acym_internalUrlToPath($url);
             $path = $this->removeAdditionalParams($path);
+
+            // The file has to be an image located in the website's folder
+            $path = $this->getEmbeddableImagePath($path);
+            if (empty($path)) {
+                continue;
+            }
+
+            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+            if (!isset($mimetypes[$ext])) {
+                continue;
+            }
 
             $filename = str_replace(['%', ' '], '_', basename($url));
             $filename = $this->removeAdditionalParams($filename);
 
             $md5 = md5($filename);
             $cid = 'cid:'.$md5;
-            $fileParts = explode(".", $filename);
-            if (empty($fileParts[1])) {
-                continue;
-            }
-            $ext = strtolower($fileParts[1]);
-            if (!isset($mimetypes[$ext])) {
-                continue;
-            }
 
+            // We only change the url if we were able to embed the image.
             if ($this->addEmbeddedImage($path, $md5, $filename, 'base64', $mimetypes[$ext])) {
                 $this->Body = preg_replace('/'.preg_quote($images[0][$i], '/').'/Ui', $images[1][$i].'="'.$cid.'"', $this->Body);
             } else {
@@ -965,30 +1035,40 @@ class MailerHelper extends Mailer
         return $embedSuccess;
     }
 
+    private function getEmbeddableImagePath(string $path): string
+    {
+        // No url and no stream wrapper, we only read local files
+        if (empty($path) || preg_match('#^[a-z][a-z\d+.-]*://#i', $path) === 1) {
+            return '';
+        }
+
+        // The file must be inside the website's folder
+        $root = rtrim(ACYM_ROOT, DS).DS;
+        if (strpos($path, $root) !== 0 || preg_match('#(^|[/\\\\])\.\.([/\\\\]|$)#', substr($path, strlen($root))) === 1) {
+            return '';
+        }
+
+        if (!is_file($path) || !is_readable($path)) {
+            return '';
+        }
+
+        // An image extension doesn't tell what the file actually contains, so we check the content itself
+        $imageInfo = @getimagesize($path);
+        if (empty($imageInfo['mime']) || strpos($imageInfo['mime'], 'image/') !== 0) {
+            return '';
+        }
+
+        return $path;
+    }
+
     public function cleanText(?string $text): string
     {
         return trim(preg_replace('/(%0A|%0D|\n+|\r+)/i', '', (string)$text));
     }
 
-    public function addParamInfo(): void
-    {
-        if (!empty($_SERVER)) {
-            $serverinfo = [];
-            foreach ($_SERVER as $oneKey => $oneInfo) {
-                $serverinfo[] = $oneKey.' => '.strip_tags(print_r($oneInfo, true));
-            }
-            $this->addParam('serverinfo', implode('<br />', $serverinfo));
-        }
-
-        if (!empty($_REQUEST)) {
-            $postinfo = [];
-            foreach ($_REQUEST as $oneKey => $oneInfo) {
-                $postinfo[] = $oneKey.' => '.strip_tags(print_r($oneInfo, true));
-            }
-            $this->addParam('postinfo', implode('<br />', $postinfo));
-        }
-    }
-
+    /**
+     * Adds shortcodes available in the email content
+     */
     public function addParam(string $name, $value): void
     {
         $tagName = '{'.$name.'}';
@@ -1002,10 +1082,12 @@ class MailerHelper extends Mailer
         $overrideClass = new OverrideClass();
         $override = $overrideClass->getMailByBaseContent($options['subject'], $options['message']);
 
+        // We let the CMS send the email
         if (empty($override) && !$overrideAllEmails) {
             return false;
         }
 
+        // AcyMailing needs to send the email
         $this->autoAddUser = true;
 
         if (empty($override)) {
@@ -1029,9 +1111,11 @@ class MailerHelper extends Mailer
 
         $errorCode = 0;
         $errorMessage = 0;
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fsockopen -- Connectivity test for SMTP ports.
         $fp = @fsockopen($targetServer, $port, $errorCode, $errorMessage, 5);
 
         if (is_resource($fp)) {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Closing the socket resource opened above, not a filesystem handle.
             fclose($fp);
 
             return true;
@@ -1138,6 +1222,11 @@ class MailerHelper extends Mailer
         return true;
     }
 
+    /**
+     * @param mixed $user
+     *
+     * @throws Exception
+     */
     private function loadUser($user, bool $force = false): object
     {
         if (is_numeric($user)) {
@@ -1151,10 +1240,10 @@ class MailerHelper extends Mailer
         }
 
         if (empty($receiver)) {
-            throw new Exception(acym_translation('ACYM_USER_NOT_FOUND'));
+            throw new Exception(acym_escape(acym_translation('ACYM_USER_NOT_FOUND')));
         }
 
-        $this->userLanguage = empty($receiver->language) ? acym_getLanguageTag() : $receiver->language;
+        $this->userLanguage = empty($receiver->language) ? acym_getDefaultNewsletterLanguage() : $receiver->language;
         $this->receiverEmail = (string)($receiver->email ?? '');
 
         return $receiver;
@@ -1175,15 +1264,17 @@ class MailerHelper extends Mailer
             $this->Body = '<div style="text-align: center; padding: 25px; font-family: Poppins; font-size: 20px">'.$options['testNote'].'</div>'.$this->Body;
         }
 
+        //We add the intro text at the top of the body
         if (!empty($this->introtext)) {
             $this->Body = $this->introtext.$this->Body;
         }
 
         if (!empty($this->defaultMail[$mailId]->preheader)) {
-            $preHeader = '<!--[if !mso 9]><!--><div style="visibility:hidden;mso-hide:all;font-size:0;color:transparent;height:0;line-height:0;max-height:0;max-width:0;opacity:0;overflow:hidden;">';
+            $preHeader = '<!--[if !mso 9]><!--><div style="visibility:hidden;mso-hide:all;font-size:0;height:0;line-height:0;max-height:0;max-width:0;opacity:0;overflow:hidden;">';
             $preHeader .= $this->defaultMail[$mailId]->preheader;
             $preHeader .= '</div><!--<![endif]-->';
 
+            //We want to insert the preview at the start of the body so we match the start of the mail
             preg_match('#(<(.*)<body(.*)>)#Uis', $this->Body, $matches);
             if (empty($matches) || empty($matches[1])) {
                 $this->Body = $preHeader.$this->Body;
@@ -1201,7 +1292,8 @@ class MailerHelper extends Mailer
 
     private function prepareHeaders(int $mailId, int $receiverId, array $options): void
     {
-        $subject = base64_encode(rand(0, 9999999)).'AC'.$receiverId.'Y'.$this->defaultMail[$mailId]->id.'BA'.base64_encode(time().rand(0, 99999));
+        // Specify a messageID which will be kept by most mail clients and in the feedback loop
+        $subject = base64_encode(acym_rand(0, 9999999)).'AC'.$receiverId.'Y'.$this->defaultMail[$mailId]->id.'BA'.base64_encode(time().acym_rand(0, 99999));
         $this->MessageID = '<'.preg_replace('|[^a-z0-9+_]|i', '', $subject).'@'.$this->serverHostname().'>';
         $this->addCustomHeader('Feedback-ID', $this->defaultMail[$mailId]->id.':'.$receiverId.':'.$this->defaultMail[$mailId]->type.':'.base64_encode(ACYM_ROOT));
 
@@ -1216,11 +1308,12 @@ class MailerHelper extends Mailer
         }
     }
 
-    private function prepareAddresses(int $mailId, object $receiver): void
+    private function prepareAddresses(int $mailId, object $receiver, array $options = []): void
     {
         $receiverName = '';
         if ($this->config->get('add_names', true)) {
             $receiverName = $this->cleanText($receiver->name);
+            //We do not set a name if the name is the same as the email address, it prevents the email from being sent with some mail servers
             if ($receiverName == $this->cleanText($receiver->email)) {
                 $receiverName = '';
             }
@@ -1228,8 +1321,17 @@ class MailerHelper extends Mailer
         $this->addAddress($this->cleanText($receiver->email), $receiverName);
 
         $this->setFrom($this->getSendSettings('from_email', $mailId), $this->getSendSettings('from_name', $mailId));
-        $this->acymAddReplyTo($this->defaultMail[$mailId]->reply_to_email ?? '', $this->defaultMail[$mailId]->reply_to_name ?? '');
+        // When the CMS email we override already carries a Reply-To, we keep it unless the email defines its own
+        $replyToEmail = $this->defaultMail[$mailId]->reply_to_email ?? '';
+        if (empty($replyToEmail) && !empty($options['replyto'])) {
+            foreach ($options['replyto'] as $oneReplyTo) {
+                $this->acymAddReplyTo($oneReplyTo[0] ?? '', $oneReplyTo[1] ?? '');
+            }
+        } else {
+            $this->acymAddReplyTo($replyToEmail, $this->defaultMail[$mailId]->reply_to_name ?? '');
+        }
 
+        // This is the bounce email address
         if (!empty($this->defaultMail[$mailId]->bounce_email)) {
             $this->Sender = $this->cleanText($this->defaultMail[$mailId]->bounce_email);
         } else {
@@ -1237,6 +1339,9 @@ class MailerHelper extends Mailer
         }
     }
 
+    /**
+     * @throws Exception
+     */
     private function prepareBcc(int $mailId, array $options): void
     {
         $bccAddresses = [];
@@ -1252,10 +1357,18 @@ class MailerHelper extends Mailer
 
         if (!empty($bccAddresses)) {
             $bccAddresses = array_filter($bccAddresses);
+
+            // loadUser() overwrites the current receiver, keep the real one
+            $receiverEmail = $this->receiverEmail;
+            $userLanguage = $this->userLanguage;
+
             foreach ($bccAddresses as $oneBccAddress) {
                 $this->loadUser($oneBccAddress, true);
                 $this->addBCC($oneBccAddress);
             }
+
+            $this->receiverEmail = $receiverEmail;
+            $this->userLanguage = $userLanguage;
         }
     }
 
@@ -1298,6 +1411,7 @@ class MailerHelper extends Mailer
     {
         $this->replaceParams();
 
+        // Left side are mail columns on which we replace the short codes
         $this->body = &$this->Body;
         $this->altbody = &$this->AltBody;
         $this->subject = &$this->Subject;
@@ -1314,13 +1428,22 @@ class MailerHelper extends Mailer
         $this->links_language = $this->defaultMail[$mailId]->links_language;
     }
 
+    private function stripAutologinParams(string $url): string
+    {
+        return str_replace(
+            ['?'.self::AUTOLOGIN_PARAMS.'&amp;', '?'.self::AUTOLOGIN_PARAMS, '&amp;'.self::AUTOLOGIN_PARAMS],
+            ['?', '', ''],
+            $url
+        );
+    }
+
     private function prepareTracking(int $mailId, object $receiver): void
     {
         if ($this->canTrack($mailId, $receiver)) {
             $receiver->id = intval($receiver->id);
             $this->statPicture($this->mailId, $receiver->id);
             $this->body = acym_absoluteURL($this->body);
-            $this->statClick($this->mailId, $receiver->id);
+            $this->statClick($this->mailId, $receiver->id, false, $receiver->key ?? '');
             if (acym_isTrackingSalesActive()) {
                 $this->trackingSales($this->mailId, $receiver->id);
             }
@@ -1331,6 +1454,7 @@ class MailerHelper extends Mailer
     {
         $this->replaceParams();
 
+        // Sending a spam-test, use the current user instead
         if (strpos($receiver->email, '@mt.acyba.com') !== false) {
             $currentUser = $this->userClass->getOneByEmail(acym_currentUserEmail());
             if (empty($currentUser)) {
@@ -1355,6 +1479,7 @@ class MailerHelper extends Mailer
             unset($acymLanguages['userLanguage']);
         }
 
+        // A user based dtext may have inserted HTML content, we need to re-inline the CSS to it
         foreach ($result as $oneResult) {
             if (!empty($oneResult['emogrifier'])) {
                 $this->prepareEmailContent();
@@ -1363,7 +1488,8 @@ class MailerHelper extends Mailer
         }
 
         if ($this->config->get('multiple_part', false)) {
-            $this->altbody = $this->textVersion($this->Body);
+            $bodyForText = preg_replace('#<head\b[^>]*>.*?</head\s*>#is', '', $this->Body);
+            $this->altbody = $this->textVersion($bodyForText);
         }
 
         $this->replaceParams();
@@ -1439,6 +1565,7 @@ class MailerHelper extends Mailer
 
         $pluginHelper = new PluginHelper();
 
+        //We create an extra tag which contains all possible parameters...
         $this->generateAllParams();
 
         $vars = [
@@ -1465,10 +1592,14 @@ class MailerHelper extends Mailer
         }
     }
 
+    /**
+     * Create a new parameter called {alltags} which will include all the others
+     */
     private function generateAllParams(): void
     {
         $result = '<table style="border:1px solid;border-collapse:collapse;" border="1" cellpadding="10"><tr><td>Tag</td><td>Value</td></tr>';
         foreach ($this->parameters as $name => $value) {
+            //Just in case of...
             if (!is_string($value)) continue;
 
             $result .= '<tr><td>'.trim($name, '{}').'</td><td>'.$value.'</td></tr>';
@@ -1479,9 +1610,11 @@ class MailerHelper extends Mailer
 
     private function sendOverride(object $override, array $options): bool
     {
+        // 2 - Prepare the email and params
         for ($i = 1; $i < count($override->parameters); $i++) {
             $oneParam = $override->parameters[$i];
 
+            // Joomla emails have links as text, convert them
             $unmodified = $oneParam;
             $oneParam = preg_replace(
                 '/(http|https):\/\/(.*)/',
@@ -1498,9 +1631,11 @@ class MailerHelper extends Mailer
 
         $this->addParam('subject', $options['subject']);
 
+        // 3 - Send the email
         $this->overrideEmailToSend = $override;
         $statusSend = $this->sendOne($override->id, $options['to'], $options);
         if (!$statusSend && !empty($this->reportMessage)) {
+            // Something went wrong when trying to send the override, log the information in the cron logs file
             $cronHelper = new CronHelper();
             $cronHelper->saveReport([$this->reportMessage]);
         }
@@ -1519,7 +1654,7 @@ class MailerHelper extends Mailer
             return $this->defaultMail[$mailId]->$mailType;
         }
 
-        $lang = empty($this->userLanguage) ? acym_getLanguageTag() : $this->userLanguage;
+        $lang = empty($this->userLanguage) ? acym_getDefaultNewsletterLanguage() : $this->userLanguage;
         $setting = $this->config->get($type);
         $translation = $this->config->get('sender_info_translation');
 
@@ -1550,14 +1685,20 @@ class MailerHelper extends Mailer
     private function inlineCSS(int $mailId): void
     {
         $mail = empty($mailId) ? $this : $this->defaultMail[$mailId];
+        if (empty($mail->body)) {
+            return;
+        }
 
-        global $emogrifiedMediaCSS;
-        $emogrifiedMediaCSS = '';
+        global $acymailingEmogrifiedMediaCSS;
+        $acymailingEmogrifiedMediaCSS = '';
 
         $style = $this->getEmailStylesheet($mail);
+        // Inline styles for mail client compatibility: https://www.caniemail.com/features/html-style/
+        // It also deletes the <style> tags from the body
         $cssInliner = CssInliner::fromHtml($mail->body)->inlineCss(implode('', $style));
         $domDocument = $cssInliner->getDomDocument();
 
+        // Remove the TinyMCE ids and the trailing ; in styles
         $mail->body = preg_replace(
             [
                 '# id="mce_\d+"#Ui',
@@ -1572,8 +1713,10 @@ class MailerHelper extends Mailer
                       ->renderBodyContent()
         );
 
+        // This character is added in the title and text blocks to prevent TinyMCE from adding an extra space when the block is empty
         $mail->body = str_replace('&zwj;', '', $mail->body);
 
+        // Remove the extra spaces in the style attributes
         $mail->body = preg_replace_callback(
             '#style="([^"]+)"#Ui',
             function ($matches) {
@@ -1594,8 +1737,11 @@ class MailerHelper extends Mailer
         $finalContent .= '<meta name="viewport" content="width=device-width, initial-scale=1.0" />'."\n";
         $finalContent .= '<title>'.$mail->subject.'</title>'."\n";
 
-        global $emogrifiedMediaCSS;
-        $finalContent .= '<style>'.$emogrifiedMediaCSS.'</style>';
+        //TODO maybe insert this CSS to a second <head> tag?
+        // Source: https://designmodo.com/html-css-emails/#:~:text=words%20of%20wisdom-,Internal%C2%A0CSS,-Undoubtedly%2C%20one%20of
+        // Apparently only for Yahoo on Android: https://www.caniemail.com/features/html-style/
+        global $acymailingEmogrifiedMediaCSS;
+        $finalContent .= '<style>'.$acymailingEmogrifiedMediaCSS.'</style>';
         $finalContent .= '<!--[if mso]><style type="text/css">#acym__wysid__template center > table { width: 580px; }</style><![endif]-->';
         $finalContent .= '<!--[if !mso]><!--><style>#acym__wysid__template center > table { width: 100%; }</style><!--<![endif]-->';
 
@@ -1624,10 +1770,12 @@ class MailerHelper extends Mailer
     {
         $style = [];
 
+        // If this is a drag and drop mail we add foundation css for email
         if (strpos($mail->body, 'acym__wysid__template') !== false) {
             static $foundationCSS = null;
             if (empty($foundationCSS)) {
                 $foundationCSS = acym_fileGetContent(ACYM_MEDIA.'css'.DS.'libraries'.DS.'foundation_email.min.css');
+                // Remove the #acym__wysid__template prefix, not needed in sent emails
                 $foundationCSS = str_replace('#acym__wysid__template ', '', $foundationCSS);
             }
             $style['foundation'] = $foundationCSS;
@@ -1671,6 +1819,7 @@ class MailerHelper extends Mailer
 
         $statusSend = $this->sendOne($this->overrideEmailToSend->id, $options['to'], $options);
         if (!$statusSend && !empty($this->reportMessage)) {
+            // Something went wrong when trying to send the override, log the information in the cron logs file
             $cronHelper = new CronHelper();
             $cronHelper->addMessage($this->reportMessage);
             $cronHelper->saveReport();
@@ -1679,7 +1828,15 @@ class MailerHelper extends Mailer
         return $statusSend;
     }
 
+    /* * * * * * * * * * * * * * * * *
+     *                               *
+     * Override PHPMailer's methods  *
+     *                               *
+     * * * * * * * * * * * * * * * * */
 
+    /**
+     * @throws Exception
+     */
     private function acymAddReplyTo(string $email, string $name): void
     {
         if (empty($email)) {
@@ -1690,6 +1847,7 @@ class MailerHelper extends Mailer
         $replyToEmail = trim($email);
 
         if (substr_count($replyToEmail, '@') > 1) {
+            //We have more than one reply to...
             $replyToEmailArray = explode(';', str_replace([';', ','], ';', $replyToEmail));
             $replyToNameArray = explode(';', str_replace([';', ','], ';', $replyToName));
             foreach ($replyToEmailArray as $i => $oneReplyTo) {
@@ -1710,6 +1868,11 @@ class MailerHelper extends Mailer
         }
     }
 
+    /**
+     * Outputs debugging info via user-defined method
+     *
+     * @param string $str
+     */
     protected function edebug($str)
     {
         if (strpos($this->ErrorInfo, $str) === false) {
@@ -1721,6 +1884,7 @@ class MailerHelper extends Mailer
     {
         $result = parent::getMailMIME();
 
+        //Added by Adrien on 11.02.2011 and then on 06 April 2011 otherwise we have 3 return char on phpMail or other functions
         $result = rtrim($result, static::$LE);
 
         if ($this->Mailer != 'mail') {

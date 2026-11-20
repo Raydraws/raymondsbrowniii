@@ -1,84 +1,116 @@
 <?php
-$hideForScroll = '';
-if (!$edition && isset($form->settings['display']['scroll']) && $form->settings['display']['scroll'] != 0) {
-    $hideForScroll = 'style="display: none;"';
-}
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- View file, its variables are local to the include scope, not true globals.
+defined('_JEXEC') || die('Restricted Access');
 ?>
-<div id="acym_fulldiv_<?php echo $form->form_tag_name; ?>"
-	 class="acym__subscription__form__popup__overlay acym__subscription__form-erase"
-    <?php echo $hideForScroll; ?>>
+<div id="acym_fulldiv_<?php echo acym_escape($form->form_tag_name); ?>"
+     class="acym__subscription__form__popup__overlay acym__subscription__form-erase"
+     role="dialog"
+     aria-modal="true"
+     aria-label="<?php echo acym_escape(acym_translation('ACYM_SUBSCRIPTION')); ?>"
+    <?php
+    if (!$edition && isset($form->settings['display']['scroll']) && $form->settings['display']['scroll'] != 0) {
+        echo 'style="display: none;"';
+    }
+    ?>>
 	<div class="acym__subscription__form__popup">
-		<div class="acym__subscription__form__popup__close acymicon-close"></div>
+		<button type="button" class="acym__subscription__form__popup__close acymicon-close" aria-label="<?php echo acym_escape(acym_translation('ACYM_CLOSE')); ?>"></button>
         <?php
         if ($edition) {
-            echo '<form action="#" onsubmit="return false;" id="'.$form->form_tag_name.'">';
+            echo '<form action="#" onsubmit="return false;" id="'.acym_escape($form->form_tag_name).'">';
         } else {
             $isButton = $form->settings['display']['display_action'] === 'yes';
             if ($isButton) {
-                $cookieExpirationAttr = 'acym-data-cookie="0"';
+                $cookieExpiration = '0';
             } else {
-                $cookieExpirationAttr = empty($form->settings['cookie']['cookie_expiration']) ? 'acym-data-cookie="1"'
-                    : 'acym-data-cookie="'.$form->settings['cookie']['cookie_expiration'].'"';
+                $cookieExpiration = empty($form->settings['cookie']['cookie_expiration']) ? '1' : $form->settings['cookie']['cookie_expiration'];
             }
-            echo '<form acym-data-id="'.$form->id.'" '.$cookieExpirationAttr.' action="'.$form->form_tag_action.'" id="'.$form->form_tag_name.'" name="'.$form->form_tag_name.'" enctype="multipart/form-data" onsubmit="return submitAcymForm(\'subscribe\',\''.$form->form_tag_name.'\', \'acymSubmitSubForm\')">';
+            echo '<form acym-data-id="'.acym_escape($form->id).'" 
+						acym-data-cookie="'.intval($cookieExpiration).'" 
+						action="'.acym_escapeUrl($form->form_tag_action).'" 
+						id="'.acym_escape($form->form_tag_name).'" 
+						name="'.acym_escape($form->form_tag_name).'"
+						aria-label="'.acym_escape(acym_translation('ACYM_SUBSCRIPTION')).'"
+						enctype="multipart/form-data"
+						onsubmit="return submitAcymForm(\'subscribe\',\''.acym_escape($form->form_tag_name).'\', \'acymSubmitSubForm\')">';
         }
         if (in_array($form->settings['style']['position'], ['image-top', 'image-left'])) {
             if (!empty($form->settings['message']['text']) && $form->settings['message']['position'] === 'before-image') {
-                echo '<p id="acym__subscription__form__popup-text">'.nl2br(acym_translation($form->settings['message']['text'])).'</p>';
+                echo '<p id="acym__subscription__form__popup-text">'.nl2br(acym_escapeHtml(acym_translation($form->settings['message']['text']))).'</p>';
             }
             include acym_getPartial('forms', 'image');
         }
         echo '<div class="acym__subscription__form__popup__fields-button">';
         include acym_getPartial('forms', 'fields');
         if (!empty($form->settings['message']['text']) && $form->settings['message']['position'] == 'before-button') {
-            echo '<p id="acym__subscription__form__popup-text">'.nl2br(acym_translation($form->settings['message']['text'])).'</p>';
+            echo '<p id="acym__subscription__form__popup-text">'.nl2br(acym_escapeHtml(acym_translation($form->settings['message']['text']))).'</p>';
         }
         include acym_getPartial('forms', 'button');
         echo '</div>';
         if (in_array($form->settings['style']['position'], ['image-bottom', 'image-right'])) {
             if (!empty($form->settings['message']['text']) && $form->settings['message']['position'] == 'before-image') {
-                echo '<p id="acym__subscription__form__popup-text">'.nl2br(acym_translation($form->settings['message']['text'])).'</p>';
+                echo '<p id="acym__subscription__form__popup-text">'.nl2br(acym_escapeHtml(acym_translation($form->settings['message']['text']))).'</p>';
             }
             include acym_getPartial('forms', 'image');
         }
         include acym_getPartial('forms', 'hidden_params');
+        echo '</form>';
         ?>
-		</form>
 	</div>
 </div>
+<?php
+$popupPosition = $form->settings['display']['popup_position'] ?? 'center';
+$positionMap = [
+    'top_left' => 'top: 20px; left: 20px;',
+    'top_center' => 'top: 20px; left: 50%; transform: translateX(-50%);',
+    'top_right' => 'top: 20px; right: 20px;',
+    'middle_left' => 'top: 50%; left: 20px; transform: translateY(-50%);',
+    'middle_right' => 'top: 50%; right: 20px; transform: translateY(-50%);',
+    'bottom_left' => 'bottom: 20px; left: 20px;',
+    'bottom_center' => 'bottom: 20px; left: 50%; transform: translateX(-50%);',
+    'bottom_right' => 'bottom: 20px; right: 20px;',
+];
+$positionCss = $positionMap[$popupPosition] ?? 'top: 50%; left: 50%; transform: translate(-50%, -50%);';
+?>
 <style>
-	<?php echo '#acym_fulldiv_'.$form->form_tag_name; ?>.acym__subscription__form__popup__overlay{
+	#acym_fulldiv_<?php echo acym_escapeHtml($form->form_tag_name); ?>.acym__subscription__form__popup__overlay{
 		display: <?php echo $edition ? 'inline' : 'none'; ?>;
+	<?php if ($popupPosition === 'center') { ?>
 		position: fixed;
 		top: 0;
 		bottom: 0;
 		right: 0;
 		left: 0;
 		background-color: rgba(200, 200, 200, .5);
-		z-index: 999999;
+	<?php } else { ?>
+		position: static;
+	<?php } ?> z-index: 999999;
 	}
 
-	<?php echo '#acym_fulldiv_'.$form->form_tag_name.' '; ?>.acym__subscription__form__popup__close{
+	#acym_fulldiv_<?php echo acym_escapeHtml($form->form_tag_name); ?> .acym__subscription__form__popup__close{
 		position: absolute;
 		top: 10px;
 		right: 10px;
 		font-weight: bold;
 		font-size: 1rem;
 		cursor: pointer;
+		background: none;
+		border: none;
+		padding: 0;
+		line-height: 1;
+		color: inherit;
 	}
 
-	<?php echo '#acym_fulldiv_'.$form->form_tag_name.' '; ?>.acym__subscription__form__popup{
+	#acym_fulldiv_<?php echo acym_escapeHtml($form->form_tag_name); ?> .acym__subscription__form__popup{
 		position: fixed;
-		left: 50%;
-		transform: translate(-50%, -50%);
-		top: 50%;
-		padding: <?php echo $form->settings['style']['padding']['height']; ?>px <?php echo $form->settings['style']['padding']['width']; ?>px;
-		background-color: <?php echo $form->settings['style']['background_color']; ?>;
-		color: <?php echo $form->settings['style']['text_color']; ?> !important;
-		background-image: url("<?php echo $form->settings['style']['background_image']; ?>");
-		background-size: <?php echo $form->settings['style']['background_size']; ?>;
-		background-position: <?php echo str_replace('_', ' ', $form->settings['style']['background_position']); ?>;
-		background-repeat: <?php echo $form->settings['style']['background_repeat']; ?>;
+	<?php echo acym_escapeHtml($positionCss); ?> padding: <?php echo acym_escapeHtml($form->settings['style']['padding']['height']); ?>px <?php echo acym_escapeHtml($form->settings['style']['padding']['width']); ?>px;
+		background-color: <?php echo acym_escapeHtml($form->settings['style']['background_color']); ?>;
+		color: <?php echo acym_escapeHtml($form->settings['style']['text_color']); ?> !important;
+		background-image: url("<?php echo acym_escapeUrl($form->settings['style']['background_image']); ?>");
+		background-size: <?php echo acym_escapeHtml($form->settings['style']['background_size']); ?>;
+		background-position: <?php echo acym_escapeHtml(str_replace('_', ' ', $form->settings['style']['background_position'])); ?>;
+		background-repeat: <?php echo acym_escapeHtml($form->settings['style']['background_repeat']); ?>;
+		border-radius: <?php echo intval($form->settings['style']['border_radius'] ?? 0); ?>px;
+		box-shadow: <?php echo intval($form->settings['style']['shadow_x'] ?? 0); ?>px <?php echo intval($form->settings['style']['shadow_y'] ?? 0); ?>px <?php echo intval($form->settings['style']['shadow_blur'] ?? 0); ?>px<?php echo acym_escapeHtml($form->settings['style']['shadow_color'] ?? 'rgba(0,0,0,0.2)'); ?>;
 		z-index: 999999;
 		text-align: center;
 		display: flex;
@@ -86,54 +118,54 @@ if (!$edition && isset($form->settings['display']['scroll']) && $form->settings[
 		align-items: center;
 	}
 
-	<?php echo '#acym_fulldiv_'.$form->form_tag_name.' '; ?>.acym__subscription__form__popup .responseContainer{
+	<?php echo '#acym_fulldiv_'.acym_escapeHtml($form->form_tag_name).' '; ?>.acym__subscription__form__popup .responseContainer{
 		margin-bottom: 0 !important;
 		padding: .4rem !important;
 	}
 
-	<?php echo '#acym_fulldiv_'.$form->form_tag_name.' '; ?>.acym__subscription__form__popup <?php echo '#'.$form->form_tag_name; ?>{
+	<?php echo '#acym_fulldiv_'.acym_escapeHtml($form->form_tag_name).' '; ?>.acym__subscription__form__popup <?php echo '#'.acym_escapeHtml($form->form_tag_name); ?>{
 		margin: 0;
 	}
 
-	<?php echo '#acym_fulldiv_'.$form->form_tag_name.' '; ?>.acym__subscription__form__popup .acym__subscription__form__fields, <?php echo '#acym_fulldiv_'.$form->form_tag_name.' '; ?>.acym__subscription__form__popup .acym__subscription__form__button{
+	<?php echo '#acym_fulldiv_'.acym_escapeHtml($form->form_tag_name).' '; ?>.acym__subscription__form__popup .acym__subscription__form__fields, <?php echo '#acym_fulldiv_'.acym_escapeHtml($form->form_tag_name).' '; ?>.acym__subscription__form__popup .acym__subscription__form__button{
 		display: block;
 		width: 100%;
 		margin: 1rem 0 !important;
 	}
 
-	<?php echo '#acym_fulldiv_'.$form->form_tag_name.' '; ?>.acym__subscription__form__popup .acym__subscription__form__fields input:not([type="radio"]):not([type="checkbox"]), <?php echo '#acym_fulldiv_'.$form->form_tag_name.' '; ?>.acym__subscription__form__popup .acym__subscription__form__fields label{
+	<?php echo '#acym_fulldiv_'.acym_escapeHtml($form->form_tag_name).' '; ?>.acym__subscription__form__popup .acym__subscription__form__fields input:not([type="radio"]):not([type="checkbox"]), <?php echo '#acym_fulldiv_'.acym_escapeHtml($form->form_tag_name).' '; ?>.acym__subscription__form__popup .acym__subscription__form__fields label{
 		display: block;
 	}
 
-	<?php echo '#acym_fulldiv_'.$form->form_tag_name.' '; ?>.acym__subscription__form__popup .acym__subscription__form__fields input[type="radio"], <?php echo '#acym_fulldiv_'.$form->form_tag_name.' '; ?>.acym__subscription__form__popup .acym__subscription__form__fields input[type="checkbox"]{
+	<?php echo '#acym_fulldiv_'.acym_escapeHtml($form->form_tag_name).' '; ?>.acym__subscription__form__popup .acym__subscription__form__fields input[type="radio"], <?php echo '#acym_fulldiv_'.acym_escapeHtml($form->form_tag_name).' '; ?>.acym__subscription__form__popup .acym__subscription__form__fields input[type="checkbox"]{
 		margin-left: 5px;
 	}
 
-	<?php echo '#acym_fulldiv_'.$form->form_tag_name.' '; ?>.acym__subscription__form__popup .acym__subscription__form__fields .acym__subscription__form__lists{
+	<?php echo '#acym_fulldiv_'.acym_escapeHtml($form->form_tag_name).' '; ?>.acym__subscription__form__popup .acym__subscription__form__fields .acym__subscription__form__lists{
 		display: block;
 		width: 100%;
 		margin: 1rem 10px !important;
 	}
 
-	<?php echo '#acym_fulldiv_'.$form->form_tag_name.' '; ?>.acym__subscription__form__popup .acym__subscription__form__fields .acym__user__edit__email{
+	<?php echo '#acym_fulldiv_'.acym_escapeHtml($form->form_tag_name).' '; ?>.acym__subscription__form__popup .acym__subscription__form__fields .acym__user__edit__email{
 		margin: auto;
 	}
 
 	<?php if (!empty($form->settings['message']['color'])) { ?>
-	<?php echo '#acym_fulldiv_'.$form->form_tag_name.' '; ?>#acym__subscription__form__popup-text{
-		color: <?php echo $form->settings['message']['color']; ?>;
+	<?php echo '#acym_fulldiv_'.acym_escapeHtml($form->form_tag_name).' '; ?>#acym__subscription__form__popup-text{
+		color: <?php echo acym_escapeHtml($form->settings['message']['color']); ?>;
 	}
 
 	<?php } ?>
 
 	<?php if (in_array($form->settings['style']['position'], ['image-right', 'image-left'])) { ?>
-	<?php echo '#acym_fulldiv_'.$form->form_tag_name.' '; ?>.acym__subscription__form__popup <?php echo '#'.$form->form_tag_name; ?>{
+	<?php echo '#acym_fulldiv_'.acym_escapeHtml($form->form_tag_name).' '; ?>.acym__subscription__form__popup <?php echo '#'.acym_escapeHtml($form->form_tag_name); ?>{
 		display: flex;
 		justify-content: center;
 		align-items: center
 	}
 
-	<?php echo '#acym_fulldiv_'.$form->form_tag_name.' '; ?>.acym__subscription__form__popup__fields-button, <?php echo '#acym_fulldiv_'.$form->form_tag_name.' '; ?>.acym__subscription__form__image{
+	<?php echo '#acym_fulldiv_'.acym_escapeHtml($form->form_tag_name).' '; ?>.acym__subscription__form__popup__fields-button, <?php echo '#acym_fulldiv_'.acym_escapeHtml($form->form_tag_name).' '; ?>.acym__subscription__form__image{
 		display: inline-block;
 	}
 
@@ -142,26 +174,76 @@ if (!$edition && isset($form->settings['display']['scroll']) && $form->settings[
 </style>
 <?php if (!$edition) { ?>
 	<script type="text/javascript">
-        const acymBackupFormTimeout<?php echo $form->form_tag_name; ?> = setTimeout(() => {
-            acym_initPopupDisplay<?php echo $form->form_tag_name; ?>(true);
+        const acymBackupFormTimeout<?php echo acym_escapeHtml($form->form_tag_name); ?> = setTimeout(() => {
+            acym_initPopupDisplay<?php echo acym_escapeHtml($form->form_tag_name); ?>(true);
         }, 1000);
 
         window.addEventListener('DOMContentLoaded', function () {
-            clearTimeout(acymBackupFormTimeout<?php echo $form->form_tag_name; ?>);
-            acym_initPopupDisplay<?php echo $form->form_tag_name; ?>();
+            clearTimeout(acymBackupFormTimeout<?php echo acym_escapeHtml($form->form_tag_name); ?>);
+            acym_initPopupDisplay<?php echo acym_escapeHtml($form->form_tag_name); ?>();
         });
 
-        function acym_initPopupDisplay<?php echo $form->form_tag_name; ?>(addedDelayForBackup = false) {
-            const acym_popupForm = document.querySelector('#acym_fulldiv_<?php echo $form->form_tag_name; ?>.acym__subscription__form__popup__overlay');
+        function acym_initPopupDisplay<?php echo acym_escapeHtml($form->form_tag_name); ?>(addedDelayForBackup = false) {
+            const acym_popupForm = document.querySelector('#acym_fulldiv_<?php echo acym_escapeHtml($form->form_tag_name); ?>.acym__subscription__form__popup__overlay');
 
             if (!acym_popupForm) {
                 return;
             }
 
             const isDisplayButton = <?php echo $isButton ? 'true' : 'false'; ?>;
+            let acymLastFocusedElement = null;
 
-            function acym_closePopupform<?php echo $form->form_tag_name; ?>(element) {
+            function acymGetFocusableElements() {
+                return acym_popupForm.querySelectorAll(
+                    'button, [href], input:not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])'
+                );
+            }
+
+            function acymPopupKeydown(event) {
+                if (event.key === 'Escape' || event.key === 'Esc') {
+                    acym_closePopupform<?php echo acym_escapeHtml($form->form_tag_name); ?>(acym_popupForm);
+                    return;
+                }
+
+                if (event.key !== 'Tab') {
+                    return;
+                }
+
+                const focusable = acymGetFocusableElements();
+                if (focusable.length === 0) {
+                    return;
+                }
+
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+
+                if (event.shiftKey && document.activeElement === first) {
+                    event.preventDefault();
+                    last.focus();
+                } else if (!event.shiftKey && document.activeElement === last) {
+                    event.preventDefault();
+                    first.focus();
+                }
+            }
+
+            function acym_openPopupform<?php echo acym_escapeHtml($form->form_tag_name); ?>() {
+                acymLastFocusedElement = document.activeElement;
+                acym_popupForm.style.display = 'inline';
+                acym_popupForm.addEventListener('keydown', acymPopupKeydown);
+
+                const focusable = acymGetFocusableElements();
+                if (focusable.length > 0) {
+                    focusable[0].focus();
+                }
+            }
+
+            function acym_closePopupform<?php echo acym_escapeHtml($form->form_tag_name); ?>(element) {
                 element.style.display = 'none';
+                acym_popupForm.removeEventListener('keydown', acymPopupKeydown);
+
+                if (acymLastFocusedElement && typeof acymLastFocusedElement.focus === 'function') {
+                    acymLastFocusedElement.focus();
+                }
 
                 if (isDisplayButton) {
                     return;
@@ -169,18 +251,21 @@ if (!$edition && isset($form->settings['display']['scroll']) && $form->settings[
 
                 let expirationDate = new Date();
                 expirationDate.setDate(expirationDate.getDate() + <?php echo empty($form->settings['cookie']['cookie_expiration']) ? 1
-                    : $form->settings['cookie']['cookie_expiration']; ?>);
-                document.cookie = 'acym_form_<?php echo $form->id; ?>=' + Date.now() + ';expires=' + expirationDate.toUTCString() + ';path=/';
+                    : intval($form->settings['cookie']['cookie_expiration']); ?>);
+                document.cookie = 'acym_form_<?php echo acym_escapeHtml($form->id); ?>=' + Date.now() + ';expires=' + expirationDate.toUTCString() + ';path=/';
             }
 
+            <?php if ($popupPosition === 'center') { ?>
             acym_popupForm.addEventListener('click', function (event) {
                 if (event.target.closest('.acym__subscription__form__popup') === null) {
-                    acym_closePopupform<?php echo $form->form_tag_name; ?>(this);
+                    acym_closePopupform<?php echo acym_escapeHtml($form->form_tag_name); ?>(this);
                 }
             });
-            document.querySelector('#acym_fulldiv_<?php echo $form->form_tag_name; ?> .acym__subscription__form__popup__close').addEventListener('click', function (event) {
-                acym_closePopupform<?php echo $form->form_tag_name; ?>(event.target.closest('.acym__subscription__form__popup__overlay'));
-            });
+            <?php } ?>
+            document.querySelector('#acym_fulldiv_<?php echo acym_escapeHtml($form->form_tag_name); ?> .acym__subscription__form__popup__close')
+                    .addEventListener('click', function (event) {
+                        acym_closePopupform<?php echo acym_escapeHtml($form->form_tag_name); ?>(event.target.closest('.acym__subscription__form__popup__overlay'));
+                    });
 
             if (isDisplayButton) {
                 displayByButton();
@@ -189,21 +274,21 @@ if (!$edition && isset($form->settings['display']['scroll']) && $form->settings[
             }
 
             function displayByButton() {
-                const button = document.querySelector('#<?php echo $form->settings['display']['button']; ?>');
+                const button = document.querySelector('#<?php echo acym_escapeHtml($form->settings['display']['button']); ?>');
 
                 if (!button) {
-                    console.error('Could not find the button with the ID <?php echo $form->settings['display']['button']; ?>');
+                    console.error('Could not find the button with the ID <?php echo acym_escapeHtml($form->settings['display']['button']); ?>');
                     return;
                 }
 
                 button.addEventListener('click', function () {
-                    acym_popupForm.style.display = 'inline';
+                    acym_openPopupform<?php echo acym_escapeHtml($form->form_tag_name); ?>();
                 });
             }
 
             function displayByDelayAndScroll() {
-                const delayDisplay = parseInt(<?php echo $form->settings['display']['delay']; ?>);
-                const scrollPercentLimit = parseInt(<?php echo $form->settings['display']['scroll']; ?>);
+                const delayDisplay = parseInt(<?php echo acym_escapeHtml($form->settings['display']['delay']); ?>);
+                const scrollPercentLimit = parseInt(<?php echo acym_escapeHtml($form->settings['display']['scroll']); ?>);
                 let windowSize;
                 let browserHeight;
                 let delayRemaining = false;
@@ -220,17 +305,23 @@ if (!$edition && isset($form->settings['display']['scroll']) && $form->settings[
                 windowSize = document.getElementsByTagName('body')[0].clientHeight;
                 browserHeight = document.documentElement.clientHeight;
 
-                if (!delayRemaining && (windowSize <= browserHeight || !scrollRemaining)) {
+                if (!delayRemaining && (
+                    windowSize <= browserHeight || !scrollRemaining
+                )) {
                     scrollRemaining = false;
-                    acym_popupForm.style.display = 'inline';
+                    acym_openPopupform<?php echo acym_escapeHtml($form->form_tag_name); ?>();
                 } else {
                     function displayAcymPopupForm() {
-                        let scrollPercent = Math.round((window.scrollY) / (windowSize - browserHeight) * 100);
+                        let scrollPercent = Math.round((
+                                                           window.scrollY
+                                                       ) / (
+                                                           windowSize - browserHeight
+                                                       ) * 100);
                         if (scrollPercent >= scrollPercentLimit) {
                             scrollRemaining = false;
                             window.removeEventListener('scroll', displayAcymPopupForm);
                             if (!delayRemaining && acym_popupForm) {
-                                acym_popupForm.style.display = 'inline';
+                                acym_openPopupform<?php echo acym_escapeHtml($form->form_tag_name); ?>();
                             }
                         }
                     }
@@ -246,7 +337,7 @@ if (!$edition && isset($form->settings['display']['scroll']) && $form->settings[
                         if (acym_popupForm !== null) {
                             delayRemaining = false;
                             if (!scrollRemaining) {
-                                acym_popupForm.style.display = 'inline';
+                                acym_openPopupform<?php echo acym_escapeHtml($form->form_tag_name); ?>();
                                 window.removeEventListener('scroll', displayAcymPopupForm);
                             }
                         }

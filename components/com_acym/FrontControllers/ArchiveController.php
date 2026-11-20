@@ -3,8 +3,11 @@
 namespace AcyMailing\FrontControllers;
 
 use AcyMailing\Classes\CampaignClass;
+use AcyMailing\Classes\HistoryClass;
 use AcyMailing\Classes\MailArchiveClass;
+use AcyMailing\Classes\MailClass;
 use AcyMailing\Classes\UserClass;
+use AcyMailing\Classes\UserStatClass;
 use AcyMailing\Helpers\EditorHelper;
 use AcyMailing\Helpers\MailerHelper;
 use AcyMailing\Helpers\PaginationHelper;
@@ -36,11 +39,15 @@ class ArchiveController extends AcymController
         $mailId = acym_getVar('int', 'id', 0);
         $isPopup = acym_getVar('int', 'is_popup', 0);
 
-        $mailArchiveClass = new MailArchiveClass();
-        $oneMail = $mailArchiveClass->getOneByMailId($mailId);
-        if (empty($oneMail)) {
-            $mailerHelper = new MailerHelper();
-            $oneMail = $mailerHelper->load($mailId);
+        // An archived version exists for every campaign ever sent, so it must go through the same visibility check
+        $oneMail = null;
+        if ($this->canViewMailOnline($mailId)) {
+            $mailArchiveClass = new MailArchiveClass();
+            $oneMail = $mailArchiveClass->getOneByMailId($mailId);
+            if (empty($oneMail)) {
+                $mailerHelper = new MailerHelper();
+                $oneMail = $mailerHelper->load($mailId);
+            }
         }
 
         if (empty($oneMail)) {
@@ -53,6 +60,7 @@ class ArchiveController extends AcymController
         acym_addMetadata('og:title', $oneMail->subject);
         acym_setPageTitle($oneMail->subject);
 
+        // Replace the user Dtexts for the preview if the key/userid here
         $userKeys = acym_getVar('string', 'userid', 0);
         if (!empty($userKeys)) {
             $userId = intval(substr($userKeys, 0, strpos($userKeys, '-')));
@@ -73,11 +81,14 @@ class ArchiveController extends AcymController
 
         acym_trigger('replaceUserInformation', [&$oneMail, &$receiver, false]);
 
+        // If there is the unsubscribe link for elastic email
         preg_match('@href="{unsubscribe:(.*)}"@', $oneMail->body, $match);
         if (!empty($match)) {
+            //We replace the tag by the url
             $oneMail->body = str_replace($match[0], 'href="'.$match[1].'"', $oneMail->body);
         }
 
+        // Add foundation for email CSS only for D&D emails
         if (strpos($oneMail->body, 'acym__wysid__template') !== false) {
             acym_addStyle(false, ACYM_CSS.'libraries/foundation_email.min.css?v='.filemtime(ACYM_MEDIA.'css'.DS.'libraries'.DS.'foundation_email.min.css'));
         }
@@ -95,6 +106,7 @@ class ArchiveController extends AcymController
             }
         }
 
+        // Make sure the background image works on the archive
         $oneMail->body = preg_replace('#background\-image: url\(&quot;([^)]*)&quot;\)#Uis', 'background-image: url($1)', $oneMail->body);
 
         $data = [
@@ -105,7 +117,68 @@ class ArchiveController extends AcymController
         acym_includeHeaders();
         parent::display($data);
 
+        // We are forced to use exit because of WordPress that displays a 0 if an exit isn't used
         if ($isPopup || 'wordpress' === ACYM_CMS) exit;
+    }
+
+    private function canViewMailOnline(int $mailId): bool
+    {
+        if (empty($mailId)) {
+            return false;
+        }
+
+        $mailClass = new MailClass();
+        if ($mailClass->hasUserAccess($mailId)) {
+            return true;
+        }
+
+        $campaignClass = new CampaignClass();
+        $campaign = $campaignClass->getOneByMailId($mailId);
+        if (
+            !empty($campaign)
+            && (int)$campaign->visible === 1
+            && (int)$campaign->active === 1
+            && (int)$campaign->sent === 1
+        ) {
+            return true;
+        }
+
+        $userKeys = acym_getVar('string', 'userid', '');
+        $separatorPosition = strpos($userKeys, '-');
+        if ($separatorPosition === false) {
+            return false;
+        }
+
+        $userId = intval(substr($userKeys, 0, $separatorPosition));
+        $userKey = substr($userKeys, $separatorPosition + 1);
+        if (empty($userId) || empty($userKey)) {
+            return false;
+        }
+
+        acym_setVar('id', $userId);
+        acym_setVar('key', $userKey);
+        $userClass = new UserClass();
+        $user = $userClass->identify(true);
+
+        if (empty($user->id) || (int)$user->id !== $userId) {
+            return false;
+        }
+
+        $historyClass = new HistoryClass();
+        $userHistory = $historyClass->getHistoryOfOneById($user->id);
+        foreach ($userHistory as $userHistoryItem) {
+            if ((int)$userHistoryItem->mail_id === $mailId && $userHistoryItem->action === 'test_sent') {
+                return true;
+            }
+        }
+
+        if (!empty($user->cms_id) && $mailClass->hasUserAccess($mailId, false, $user->cms_id)) {
+            return true;
+        }
+
+        $userStatClass = new UserStatClass();
+
+        return $userStatClass->hasUserReceivedMail($mailId, (int)$user->id);
     }
 
     public function listing(): void
@@ -114,6 +187,7 @@ class ArchiveController extends AcymController
 
         $search = acym_getVar('string', 'acym_search', '');
 
+        // Get the Joomla menu parameters
         $menu = acym_getMenu();
         if (!is_object($menu)) {
             acym_redirect(acym_rootURI());
@@ -123,6 +197,7 @@ class ArchiveController extends AcymController
         $params = method_exists($menu, 'getParams') ? $menu->getParams() : $menu->params;
         $menuParams = new AcymParameter($params);
 
+        // Handle the core Joomla params
         $paramsJoomla = [];
         $paramsJoomla['suffix'] = $menuParams->get('pageclass_sfx', '');
         $paramsJoomla['page_heading'] = $menuParams->get('page_heading');
@@ -140,6 +215,7 @@ class ArchiveController extends AcymController
             acym_addMetadata('robots', $menuParams->get('robots'));
         }
 
+        // Initialize our own params then call the generic view
         $nbNewslettersPerPage = $menuParams->get('archiveNbNewslettersPerPage', 10);
         $listsSent = $menuParams->get('lists', '');
         $popup = $menuParams->get('popup', '1');
@@ -194,7 +270,7 @@ class ArchiveController extends AcymController
             $params['displayUserListOnly'] = $viewParams['displayUserListOnly'];
         }
 
-        $params['page'] = $this->getVarFiltersListing('int', 'archive_pagination_page', 1);
+        $params['page'] = max(1, $this->getVarFiltersListing('int', 'archive_pagination_page', 1));
         $campaignClass = new CampaignClass();
         $pagination = new PaginationHelper();
         $params['numberPerPage'] = (int)$viewParams['nbNewslettersPerPage'];

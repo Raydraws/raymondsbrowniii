@@ -1,7 +1,9 @@
 <?php
+defined('_JEXEC') || die('Restricted Access');
 
 include_once __DIR__.DIRECTORY_SEPARATOR.'AcymJFormField.php';
 
+// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedClassFound -- Joomla specific class naming with imposed prefix "JFormField".
 class JFormFieldArticle extends AcymJFormField
 {
     public function __construct($form = null)
@@ -21,6 +23,7 @@ class JFormFieldArticle extends AcymJFormField
             $title = acym_CMSArticleTitle($value);
         }
 
+        // Callback function from the modal to the main window
         acym_addScript(
             true,
             "

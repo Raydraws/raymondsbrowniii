@@ -31,12 +31,12 @@ class plgAcymArticle extends AcymPlugin
                 'readmore' => ['ACYM_READ_MORE', false],
             ];
 
-            $this->initCustomView();
+            $this->initCustomView(true);
 
             $this->settings = [
                 'custom_view' => [
                     'type' => 'custom_view',
-                    'tags' => array_merge($this->displayOptions, $this->replaceOptions, $this->elementOptions),
+                    'tags' => array_merge($this->displayOptions, $this->replaceOptions, $this->elementOptions, $this->customOptions),
                 ],
                 'front' => [
                     'type' => 'select',
@@ -94,6 +94,25 @@ class plgAcymArticle extends AcymPlugin
         $this->elementOptions['image_fulltext_caption'] = ['image_fulltext_caption'];
     }
 
+    public function initCustomOptionsCustomView(): void
+    {
+        if (!ACYM_J37) {
+            return;
+        }
+
+        $customFields = acym_loadObjectList(
+            'SELECT id, title, name
+            FROM #__fields 
+            WHERE context = "com_content.article" 
+                AND state = 1 
+            ORDER BY ordering ASC, title ASC'
+        );
+
+        foreach ($customFields as $oneCustomField) {
+            $this->customOptions[$oneCustomField->id.'|'.$oneCustomField->name] = [$oneCustomField->title];
+        }
+    }
+
     public function getPossibleIntegrations(): ?object
     {
         if (!acym_isAdmin() && $this->getParam('front', 'all') === 'hide') {
@@ -107,6 +126,7 @@ class plgAcymArticle extends AcymPlugin
     {
         $this->defaultValues = $defaultValues;
 
+        // Get the categories, always with the columns "id", "parent_id" and "title". Use the MySQL "AS" if needed
         $this->categories = acym_loadObjectList(
             'SELECT id, parent_id, title
             FROM `#__categories` 
@@ -156,6 +176,7 @@ class plgAcymArticle extends AcymPlugin
             );
         }
 
+        // Handle joomla custom fields
         if (ACYM_J37) {
             $customFields = acym_loadObjectList(
                 'SELECT id, title 
@@ -296,6 +317,7 @@ class plgAcymArticle extends AcymPlugin
 
     public function prepareListing(): string
     {
+        //we load all elements with the categories
         $this->querySelect = 'SELECT element.id, element.title, element.publish_up ';
         $this->query = 'FROM #__content AS element ';
         $this->filters = [];
@@ -311,6 +333,7 @@ class plgAcymArticle extends AcymPlugin
 
         parent::prepareListing();
 
+        // If we filtered the listing for a specific category, we display only the elements of this category
         if (!empty($this->pageInfo->filter_cat)) {
             $this->filters[] = 'element.catid = '.intval($this->pageInfo->filter_cat);
         }
@@ -539,7 +562,7 @@ class plgAcymArticle extends AcymPlugin
         $varFields['{image_intro_caption}'] = '';
         $varFields['{image_fulltext_caption}'] = '';
         if (!empty($element->images)) {
-            $images = json_decode($element->images, true);
+            $images = is_string($element->images) ? json_decode($element->images, true) : $element->images;
             if (!empty($images['image_intro_caption'])) $varFields['{image_intro_caption}'] = $images['image_intro_caption'];
             if (!empty($images['image_fulltext_caption'])) $varFields['{image_fulltext_caption}'] = $images['image_fulltext_caption'];
 
@@ -608,7 +631,7 @@ class plgAcymArticle extends AcymPlugin
         }
 
         $category = acym_loadResult('SELECT title FROM #__categories WHERE id = '.intval($element->catid));
-        $varFields['{cat}'] = '<a href="'.$this->finalizeLink('index.php?option=com_content&view=category&id='.$element->catid, $tag).'" target="_blank">'.acym_escape(
+        $varFields['{cat}'] = '<a href="'.$this->finalizeLink('index.php?option=com_content&view=category&id='.$element->catid, $tag).'" target="_blank">'.acym_escapeHtml(
                 $category
             ).'</a>';
         if (in_array('cat', $tag->display)) {
@@ -626,7 +649,7 @@ class plgAcymArticle extends AcymPlugin
                   AND map.content_item_id = '.intval($tag->id)
         );
         foreach ($tags as $i => $oneTag) {
-            $tags[$i] = '<a href="'.$this->finalizeLink('index.php?option=com_tags&view=tag&id='.$oneTag->id.':'.$oneTag->alias, $tag).'" target="_blank">'.acym_escape(
+            $tags[$i] = '<a href="'.$this->finalizeLink('index.php?option=com_tags&view=tag&id='.$oneTag->id.':'.$oneTag->alias, $tag).'" target="_blank">'.acym_escapeHtml(
                     $oneTag->title
                 ).'</a>';
         }
@@ -639,10 +662,10 @@ class plgAcymArticle extends AcymPlugin
             ];
         }
 
-        $this->handleCustomFields($tag, $customFields);
+        $this->prepareCustomFields($tag, $customFields, $varFields);
 
         $readMoreText = empty($tag->readmore) ? acym_translation('ACYM_READ_MORE') : $tag->readmore;
-        $varFields['{readmore}'] = '<a class="acymailing_readmore_link" style="text-decoration:none;" target="_blank" href="'.$link.'"><span class="acymailing_readmore">'.acym_escape(
+        $varFields['{readmore}'] = '<a class="acymailing_readmore_link" style="text-decoration:none;" target="_blank" href="'.$link.'"><span class="acymailing_readmore">'.acym_escapeHtml(
                 $readMoreText
             ).'</span></a>';
         if (in_array('readmore', $tag->display)) $afterArticle .= $varFields['{readmore}'];
@@ -666,9 +689,59 @@ class plgAcymArticle extends AcymPlugin
 
             $categoryTitle = '<h1 class="acymailing_category_title">'.$element->category_title.'</h1>';
             $categoryLink = $this->finalizeLink('index.php?option=com_content&view=category&id='.$element->catid, $tag);
-            $categoryTitle = '<a target="_blank" href="'.$categoryLink.'">'.$categoryTitle.'</a>';
+            $categoryTitle = '<div class="acymailing_content"><a target="_blank" href="'.$categoryLink.'">'.$categoryTitle.'</a></div>';
         }
 
         return $categoryTitle.$this->finalizeElementFormat($result, $tag, $varFields);
+    }
+
+    private function prepareCustomFields(object $tag, array &$customFields, array &$varFields = []): void
+    {
+        $rawfields = acym_loadObjectList(
+            'SELECT `field`.*, `values`.`value` 
+            FROM #__fields AS `field` 
+            LEFT JOIN #__fields_values AS `values` 
+                ON `values`.`field_id` = `field`.`id` 
+                AND `values`.`item_id` = '.intval($tag->id).'
+            WHERE `field`.`context` = "com_content.article"'
+        );
+
+        $fields = [];
+        foreach ($rawfields as $field) {
+            $fields[$field->id][] = $field;
+        }
+
+        uasort($fields, function ($a, $b) {
+            return $a[0]->ordering <=> $b[0]->ordering;
+        });
+
+        $tag->custom = empty($tag->custom) ? [] : explode(',', $tag->custom);
+        acym_arrayToInteger($tag->custom);
+
+        foreach ($fields as $fieldId => $fieldValues) {
+            $cfKey = '{'.$fieldId.'|'.$fieldValues[0]->name.'}';
+            $varFields[$cfKey] = (count($fieldValues) === 1 && is_null($fieldValues[0]->value)) ? '' : $this->getFormattedValue($fieldValues);
+
+            if (!in_array($fieldId, $tag->custom)) {
+                continue;
+            }
+
+            if ((is_string($varFields[$cfKey]) && strlen($varFields[$cfKey]) === 0) || (!is_string($varFields[$cfKey]) && empty($varFields[$cfKey]))) {
+                continue;
+            }
+
+            $fieldParams = empty($fieldValues[0]->params) ? [] : (is_string($fieldValues[0]->params) ? json_decode($fieldValues[0]->params, true) : $fieldValues[0]->params);
+
+            if (!empty($fieldParams['showlabel'])) {
+                $customFields[] = [
+                    $varFields[$cfKey],
+                    $fieldValues[0]->label,
+                ];
+            } else {
+                $customFields[] = [
+                    $varFields[$cfKey],
+                ];
+            }
+        }
     }
 }

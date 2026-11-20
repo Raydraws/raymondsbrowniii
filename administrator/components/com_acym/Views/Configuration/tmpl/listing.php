@@ -1,4 +1,8 @@
-<form id="acym_form" action="<?php echo acym_completeLink(acym_getVar('cmd', 'ctrl')); ?>" method="post" name="acyForm" novalidate data-abide-ignore>
+<?php
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound -- View file, its variables are local to the include scope, not true globals.
+defined('_JEXEC') || die('Restricted Access');
+?>
+<form id="acym_form" action="<?php echo acym_escapeUrl(acym_completeLink(acym_getVar('cmd', 'ctrl'))); ?>" method="post" name="acyForm" novalidate data-abide-ignore>
     <?php $data['toolbar']->displayToolbar($data); ?>
 	<div class="grid-x acym__content acym__content__tab">
 
@@ -13,6 +17,7 @@
             'security' => 'ACYM_CONFIGURATION_SECURITY',
             'languages' => 'ACYM_CONFIGURATION_LANGUAGES',
         ];
+
 
         acym_trigger('onConfigurationAddTabs', [&$tabs]);
 

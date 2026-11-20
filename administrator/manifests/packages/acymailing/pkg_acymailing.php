@@ -63,6 +63,7 @@ class Pkg_AcymailingInstallerScript extends InstallerScript
 		<br /><br />
         <?php
         $tables = [
+            'mail_stat_detail',
             'scenario_history_line',
             'scenario_queue',
             'scenario_process',
@@ -159,62 +160,7 @@ class Pkg_AcymailingInstallerScript extends InstallerScript
             return;
         }
 
-        $extensionId = acym_loadResult(
-            'SELECT `extension_id` 
-            FROM #__extensions 
-            WHERE `element` = "pkg_acymailing" 
-                AND type = "package"'
-        );
-
-        if (empty($extensionId)) {
-            return;
-        }
-
-        $acymailingExtensions = acym_loadResultArray(
-            'SELECT `extension_id` 
-            FROM #__extensions 
-            WHERE `package_id` = '.intval($extensionId)
-        );
-
-        if (empty($acymailingExtensions)) {
-            $acymailingExtensions = [];
-        }
-        $acymailingExtensions[] = $extensionId;
-
-        // 1 - Clear existing updates on AcyMailing extensions
-        acym_query('DELETE FROM #__updates WHERE extension_id IN ('.implode(',', $acymailingExtensions).')');
-        acym_query(
-            'DELETE update_sites 
-            FROM #__update_sites AS update_sites 
-            JOIN #__update_sites_extensions AS update_sites_extensions 
-                ON update_sites.update_site_id = update_sites_extensions.update_site_id
-            WHERE update_sites_extensions.extension_id IN ('.implode(',', $acymailingExtensions).')'
-        );
-        acym_query('DELETE FROM #__update_sites_extensions WHERE extension_id IN ('.implode(',', $acymailingExtensions).')');
-
-
-        // 2 - Add the new update XML
-        $updateSiteDefinition = new \stdClass();
-        $updateSiteDefinition->enabled = 1;
-        $updateSiteDefinition->type = 'extension';
-        $updateSiteDefinition->name = 'AcyMailing';
-        $updateSiteDefinition->location = ACYM_UPDATEME_API_URL.'public/updatexml/component?extension=acymailing&cms=joomla&version=latest&level=starter&type=package';
-
-        //__START__essential_
-        if (acym_level(ACYM_ESSENTIAL)) {
-            $updateSiteDefinition->location .= '&website='.urlencode(ACYM_LIVE);
-        }
-        //__END__essential_
-
-        $updateSiteId = acym_insertObject('#__update_sites', $updateSiteDefinition);
-        if (empty($updateSiteId)) {
-            return;
-        }
-
-        acym_query(
-            'INSERT IGNORE INTO #__update_sites_extensions (update_site_id, extension_id) 
-            VALUES ('.intval($updateSiteId).','.intval($extensionId).')'
-        );
+        acym_syncUpdateSite();
     }
 
     private function activePlugins()

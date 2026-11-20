@@ -63,23 +63,9 @@ trait Edition
         acym_trigger('onAcymMailboxActionDefine', [&$actions]);
 
         $actionOptions = ['' => acym_translation('ACYM_CHOOSE_ACTION')];
-        $actionParameters = '';
-
         foreach ($actions as $key => $oneAction) {
             $actionOptions[$key] = $oneAction->name;
-            $actionParameters .= '<div class="acym__mailbox__edition__action__one__parameters '.$key.' margin-top-1">'.$oneAction->option.'</div>';
         }
-
-        $initialAction = acym_select(
-            $actionOptions,
-            'acym_action[__num__][action]',
-            '',
-            [
-                'class' => 'acym__select acym__mailbox__edition__action__one__choice',
-                'acym-data-infinite' => '',
-            ]
-        );
-        $initialAction .= $actionParameters;
 
         $data = [
             'mailboxId' => $mailboxId,
@@ -87,7 +73,8 @@ trait Edition
             'delayType' => new DelayType(),
             'groups' => acym_getGroups(),
             'lists' => $listsClass->getAllWithIdName(),
-            'initialAction' => $initialAction,
+            'actionDeclarations' => $actions,
+            'actionOptions' => $actionOptions,
         ];
 
         parent::display($data);
@@ -107,6 +94,8 @@ trait Edition
 
     public function storeMailboxAction(): void
     {
+        acym_checkToken();
+
         $mailbox = acym_getVar('array', 'mailbox', []);
         $mailboxClass = new MailboxClass();
         $mailboxObject = new \stdClass();
@@ -147,6 +136,8 @@ trait Edition
 
     public function testMailboxAction(): void
     {
+        acym_checkToken();
+
         $mailbox = acym_getVar('array', 'mailbox', []);
 
         if (empty($mailbox)) {
@@ -155,18 +146,25 @@ trait Edition
 
         $mailbox = (object)$mailbox;
 
+        // If this is not a new mailbox or if it is not from the configuration menu, we need to get the password from the database
         if (!empty($mailbox->id)) {
             if ($mailbox->id !== 'configuration') {
+                // We check if the password has not changed
                 if (empty(trim($mailbox->password, '*'))) {
                     $mailboxClass = new MailboxClass();
                     $mailboxFromDatabase = $mailboxClass->getOneById($mailbox->id);
-                    $mailbox->password = $mailboxFromDatabase->password;
+                    if (!empty($mailboxFromDatabase) && $this->isSameMailboxHost($mailbox->server ?? '', $mailboxFromDatabase->server)) {
+                        $mailbox->password = $mailboxFromDatabase->password;
+                    }
                 }
             } elseif (empty(trim($mailbox->password, '*'))) {
-                $mailbox->password = $this->config->get('bounce_password');
-                $mailbox->bounce_access_token = str_replace('Bearer ', '', $this->config->get('bounce_access_token', ''));
-                if (empty($mailbox->connection_method)) {
-                    $mailbox->connection_method = $this->config->get('connection_method', 'imap');
+                // If it comes from the configuration menu, we need to get the password from the config table (not the mailbox_action table)
+                if ($this->isSameMailboxHost($mailbox->server ?? '', $this->config->get('bounce_server'))) {
+                    $mailbox->password = $this->config->get('bounce_password');
+                    $mailbox->bounce_access_token = str_replace('Bearer ', '', $this->config->get('bounce_access_token', ''));
+                    if (empty($mailbox->connection_method)) {
+                        $mailbox->connection_method = $this->config->get('connection_method', 'imap');
+                    }
                 }
             }
         }
@@ -183,5 +181,15 @@ trait Edition
         } else {
             acym_sendAjaxResponse(acym_translation('ACYM_CONNECTION_SUCCESSFUL'));
         }
+    }
+
+    private function isSameMailboxHost($submittedServer, $storedServer): bool
+    {
+        $storedServer = trim((string)$storedServer);
+        if ($storedServer === '') {
+            return false;
+        }
+
+        return strcasecmp(trim((string)$submittedServer), $storedServer) === 0;
     }
 }

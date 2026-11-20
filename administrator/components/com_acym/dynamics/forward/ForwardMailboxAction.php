@@ -7,11 +7,48 @@ use AcyMailing\Helpers\MailerHelper;
 
 trait ForwardMailboxAction
 {
-    public function onAcymMailboxActionDefine(&$actions)
+    protected function initMailboxActions(): void
+    {
+        $this->mailboxActions = [
+            'forward_specific' => acym_translation('ACYM_FORWARD_EMAIL'),
+            'forward_list' => acym_translation('ACYM_FORWARD_TO_A_LIST'),
+        ];
+    }
+
+    public function displayMailboxActionOptions_forward_specific(string $fieldName): void
+    {
+        ?>
+		<input type="text"
+		       name="<?php echo acym_escape($fieldName.'[addresses]'); ?>"
+		       placeholder="address@example.com,other@example.com"><br />
+        <?php
+        $this->displayForwardTemplateChoice($fieldName);
+    }
+
+    public function displayMailboxActionOptions_forward_list(string $fieldName): void
     {
         $listClass = new ListClass();
-        $lists = $listClass->getAllWithIdName();
+        ?>
+		<div class="intext_select_mailbox cell">
+            <?php acym_select(
+                $listClass->getAllWithIdName(),
+                $fieldName.'[list_id]',
+                null,
+                ['class' => 'acym__select'],
+                'value',
+                'text',
+                null,
+                false,
+                true
+            ); ?>
+		</div>
+		<br /><br />
+        <?php
+        $this->displayForwardTemplateChoice($fieldName);
+    }
 
+    private function displayForwardTemplateChoice(string $fieldName): void
+    {
         $mailClass = new MailClass();
         $templates = $mailClass->getTemplatesForMailboxAction();
 
@@ -20,46 +57,19 @@ trait ForwardMailboxAction
         $firstOption->name = acym_translation('ACYM_CHOOSE_TEMPLATE');
         array_unshift($templates, $firstOption);
 
-        $actions['forward_specific'] = new stdClass();
-        $actions['forward_specific']->name = acym_translation('ACYM_FORWARD_EMAIL');
-        $actions['forward_specific']->option = '<input type="text" 
-                                                        name="acym_action[__num__][forward_specific][addresses]" 
-                                                        placeholder="address@example.com,other@example.com"><br />';
-        $actions['forward_specific']->option .= acym_translationSprintf(
-            'ACYM_INCLUDE_IN_TEMPLATE',
-            '<div class="intext_select_mailbox cell">'.acym_select(
+        $templateSelect = '<div class="intext_select_mailbox cell">'.acym_select(
                 $templates,
-                'acym_action[__num__][forward_specific][template_id]',
+                $fieldName.'[template_id]',
                 null,
                 ['class' => 'acym__select'],
                 'id',
                 'name'
-            ).'</div>'
-        );
-        $actions['forward_specific']->option .= acym_info(['textShownInTooltip' => 'ACYM_INCLUDE_IN_TEMPLATE_DESC']);
+            ).'</div>';
 
-        $actions['forward_list'] = new stdClass();
-        $actions['forward_list']->name = acym_translation('ACYM_FORWARD_TO_A_LIST');
-        $actions['forward_list']->option = '<div class="intext_select_mailbox cell">';
-        $actions['forward_list']->option .= acym_select(
-            $lists,
-            'acym_action[__num__][forward_list][list_id]',
-            null,
-            ['class' => 'acym__select']
-        );
-        $actions['forward_list']->option .= '</div><br /><br />';
-        $actions['forward_list']->option .= acym_translationSprintf(
-            'ACYM_INCLUDE_IN_TEMPLATE',
-            '<div class="intext_select_mailbox cell">'.acym_select(
-                $templates,
-                'acym_action[__num__][forward_list][template_id]',
-                null,
-                ['class' => 'acym__select'],
-                'id',
-                'name'
-            ).'</div>'
-        );
-        $actions['forward_list']->option .= acym_info(['textShownInTooltip' => 'ACYM_INCLUDE_IN_TEMPLATE_DESC']);
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- The select is built and escaped by acym_select just above, and its position in the sentence depends on the language.
+        echo acym_translationSprintf('ACYM_INCLUDE_IN_TEMPLATE', $templateSelect);
+
+        acym_info(['textShownInTooltip' => 'ACYM_INCLUDE_IN_TEMPLATE_DESC']);
     }
 
     public function onAcymMailboxActionSummaryListing(&$action, &$result)
@@ -147,9 +157,10 @@ trait ForwardMailboxAction
         }
 
         if (!empty($mailboxHelper->_message->Date)) {
-            $newMail->body = str_replace('{mailheader:date}', date('d.m.Y H:i', strtotime($mailboxHelper->_message->Date)), $newMail->body);
+            $newMail->body = str_replace('{mailheader:date}', acym_date(strtotime($mailboxHelper->_message->Date), 'd.m.Y H:i'), $newMail->body);
         }
 
+        // Clean tags if we couldn't replace them
         $newMail->body = str_replace(
             [
                 '{mailheader:from}',
@@ -222,10 +233,12 @@ trait ForwardMailboxAction
             return false;
         }
 
+        // We're going to forward the email, save its attachments and embed images
         $mailboxHelper->decodeMessage(true);
 
         $subject = $mailboxHelper->_message->subject;
 
+        //If the option remove subject is set
         if (!empty($mailboxHelper->action->conditions['subject_remove'])) {
             if (!empty($mailboxHelper->action->conditions['subject_text'])) {
                 $subject = str_replace($mailboxHelper->action->conditions['subject_text'], '', $mailboxHelper->_message->subject);
@@ -263,12 +276,12 @@ trait ForwardMailboxAction
 
         if (!empty($mailboxHelper->action->senderfrom)) {
             $newMail->from_email = $mailboxHelper->decodeHeader($mailboxHelper->_message->header->from_email);
-            $newMail->from_name = strip_tags($mailboxHelper->decodeHeader($mailboxHelper->_message->header->from_name));
+            $newMail->from_name = acym_stripTags($mailboxHelper->decodeHeader($mailboxHelper->_message->header->from_name));
         }
 
         if (!empty($mailboxHelper->action->senderto)) {
             $newMail->reply_to_email = $mailboxHelper->decodeHeader($mailboxHelper->_message->header->from_email);
-            $newMail->reply_to_name = strip_tags($mailboxHelper->decodeHeader($mailboxHelper->_message->header->from_name));
+            $newMail->reply_to_name = acym_stripTags($mailboxHelper->decodeHeader($mailboxHelper->_message->header->from_name));
         }
 
         if (!empty($mailboxHelper->attachments)) {

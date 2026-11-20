@@ -7,6 +7,7 @@ use AcyMailing\Classes\UserClass;
 use AcyMailing\Helpers\RegacyHelper;
 use Joomla\CMS\Component\ComponentHelper;
 use Joomla\CMS\Factory;
+use Joomla\CMS\Language\Text;
 use Joomla\CMS\Plugin\CMSPlugin;
 use AcyMailing\Helpers\ScenarioHelper;
 
@@ -279,35 +280,29 @@ class plgSystemAcymtriggers extends CMSPlugin
         }
 
         $app = Factory::getApplication();
-        if ($app->getName() != 'site') {
-            return;
-        }
-
-        if (!$this->initAcy()) {
+        if ($app->getName() !== 'site' || !$this->initAcy()) {
             return;
         }
 
         $menu = acym_getMenu();
-        if (empty($menu)) {
+        if (empty($menu) || !acym_level(ACYM_ENTERPRISE)) {
             return;
         }
 
-        if (acym_level(ACYM_ENTERPRISE)) {
-            $formClass = new FormClass();
-            $forms = $formClass->getAllFormsToDisplay();
-            if (empty($forms)) {
-                return;
-            }
+        $formClass = new FormClass();
+        $forms = $formClass->getAllFormsToDisplay();
+        if (empty($forms)) {
+            return;
+        }
 
-            foreach ($forms as $form) {
-                if (!empty($form->pages) && (in_array($menu->id, $form->pages) || in_array('all', $form->pages))) {
-                    $this->formToDisplay[] = $formClass->renderForm($form);
-                }
+        foreach ($forms as $form) {
+            if (!empty($form->pages) && (in_array($menu->id, $form->pages) || in_array('all', $form->pages))) {
+                $this->formToDisplay[] = $formClass->renderForm($form);
             }
+        }
 
-            if (!empty($this->formToDisplay)) {
-                acym_initModule();
-            }
+        if (!empty($this->formToDisplay)) {
+            acym_initModule();
         }
     }
 
@@ -319,6 +314,10 @@ class plgSystemAcymtriggers extends CMSPlugin
 
     public function onAfterRoute()
     {
+        //__START__essential_
+        $this->handleUpdatesPage();
+        //__END__essential_
+
         // Fix a bug in Joomla: the session com_media.return_url is deleted the first time we submit the image upload form
         if (!empty($_REQUEST['author']) && 'acymailing' === $_REQUEST['author'] && !empty($_REQUEST['task']) && 'file.upload' === $_REQUEST['task'] && !empty($_REQUEST['option']) && 'com_media' === $_REQUEST['option']) {
             $session = Factory::getSession();
@@ -412,6 +411,46 @@ class plgSystemAcymtriggers extends CMSPlugin
         return true;
     }
 
+    //__START__essential_
+
+    private function handleUpdatesPage()
+    {
+        if ('com_installer' !== $this->getVar('cmd', 'option') || 'update' !== $this->getVar('cmd', 'view')) {
+            return;
+        }
+
+        try {
+            $db = Factory::getDbo();
+            $db->setQuery(
+                'SELECT `name`, `value`
+                FROM #__acym_configuration
+                WHERE `name` IN ("license_key", "expirationdate", "level")'
+            );
+            $config = $db->loadAssocList('name', 'value');
+
+            if (($config['level'] ?? '') === 'Starter') {
+                return;
+            }
+        } catch (Exception $e) {
+            return;
+        }
+
+        $expirationDate = empty($config['expirationdate']) ? 0 : (int)$config['expirationdate'];
+
+        $isExpired = !empty($expirationDate) && $expirationDate < time();
+        if (!empty($config['license_key']) && !$isExpired) {
+            return;
+        }
+
+        Factory::getLanguage()->load('com_acym', JPATH_SITE);
+
+        $message = Text::_('ACYM_PAID_VERSION_NEED_UPDATE_ERROR_LICENSE_ATTACH');
+
+        Factory::getApplication()->enqueueMessage('AcyMailing: '.$message, 'warning');
+    }
+
+    //__END__essential_
+
     private function displayForms()
     {
         if (empty($this->formToDisplay)) {
@@ -433,6 +472,19 @@ class plgSystemAcymtriggers extends CMSPlugin
             return;
         }
 
+        $app = Factory::getApplication();
+        $jversion = preg_replace('#[^0-9\.]#i', '', JVERSION);
+
+        if (version_compare($jversion, '4.0.0', '>=')) {
+            $isAdmin = $app->isClient('administrator');
+        } else {
+            $isAdmin = $app->isAdmin();
+        }
+
+        if ($isAdmin) {
+            return;
+        }
+
         $db = Factory::getDbo();
         $db->setQuery('SELECT `value` FROM #__acym_configuration WHERE `name` LIKE "%regacy" OR `name` LIKE "%\_sub"');
         $regacyOptions = $db->loadColumn();
@@ -444,11 +496,8 @@ class plgSystemAcymtriggers extends CMSPlugin
                 break;
             }
         }
-        if (!$regacyNeeded) {
-            return;
-        }
 
-        if (!$this->initAcy()) {
+        if (!$regacyNeeded || !$this->initAcy()) {
             return;
         }
 
@@ -649,6 +698,11 @@ class plgSystemAcymtriggers extends CMSPlugin
 
     private function handleCron()
     {
+        $jversion = preg_replace('#[^0-9\.]#i', '', JVERSION);
+        if (version_compare($jversion, '4.0.0', '>=')) {
+            return;
+        }
+
         //__START__essential_
         // No cron call on ajax
         if (!empty($_REQUEST['tmpl']) && in_array($_REQUEST['tmpl'], ['component', 'raw'])) {
@@ -677,13 +731,13 @@ class plgSystemAcymtriggers extends CMSPlugin
         }
 
         $cronFrequency = $this->getAcyConf('cron_frequency');
-        $cronBatches = $this->getAcyConf('queue_batch_auto');
 
         // Disable multicron if the frequency is set to 0 minutes => it would slow down the website
         if (empty($cronFrequency)) {
             return;
         }
 
+        $cronBatches = $this->getAcyConf('queue_batch_auto');
         // Only one batch every 15 minutes+, no need for the multi cron
         if (intval($cronFrequency) >= 900 && intval($cronBatches) < 2) {
             return;
@@ -706,13 +760,9 @@ class plgSystemAcymtriggers extends CMSPlugin
     private function handleAutologin()
     {
         $subId = $this->getVar('int', 'autoSubId');
-        $subKey = $this->getVar('string', 'subKey');
+        $subToken = $this->getVar('string', 'subKey');
 
-        if (empty($subId) || empty($subKey)) {
-            return;
-        }
-
-        if (!$this->initAcy()) {
+        if (empty($subId) || empty($subToken) || !$this->initAcy()) {
             return;
         }
 
@@ -720,19 +770,29 @@ class plgSystemAcymtriggers extends CMSPlugin
         $cleanedUrl = acym_cleanUrl($currentUrl, ['autoSubId', 'subKey']);
 
         $config = acym_config();
-        if ($config->get('autologin_urls', 0) == 0) {
-            acym_redirect($cleanedUrl);
-        }
-
-        $cmsId = acym_loadResult('SELECT `cms_id` FROM #__acym_user WHERE `id` = '.intval($subId).' AND `key` = '.acym_escapeDB($subKey));
-        if (empty($cmsId) || $cmsId === acym_currentUserId()) {
+        if ($config->get('autologin_urls', 0) != 1) {
             acym_redirect($cleanedUrl);
 
             return;
         }
 
-        $username = acym_loadResult('SELECT `username` FROM #__users WHERE `id` = '.intval($cmsId));
-        if (empty($username)) {
+        $userClass = new UserClass();
+        $subscriber = $userClass->getOneById($subId);
+        if (empty($subscriber->cms_id) || $subscriber->cms_id === acym_currentUserId()) {
+            acym_redirect($cleanedUrl);
+
+            return;
+        }
+
+        if (!acym_verifyAutologinToken($subId, $subToken, $subscriber->key)) {
+            acym_redirect($cleanedUrl);
+
+            return;
+        }
+
+        // Never allow autologin for Super Admin accounts
+        $joomlaUser = Factory::getUser($subscriber->cms_id);
+        if (empty($joomlaUser) || $joomlaUser->id == 0 || $joomlaUser->authorise('core.admin')) {
             acym_redirect($cleanedUrl);
 
             return;
@@ -741,7 +801,7 @@ class plgSystemAcymtriggers extends CMSPlugin
         acym_loadJoomlaPlugin('user');
 
         $options = ['action' => 'core.login.site'];
-        $response = ['username' => $username];
+        $response = ['username' => $joomlaUser->username];
         acym_triggerCmsHook('onUserLogin', [$response, $options]);
 
         acym_redirect($cleanedUrl);

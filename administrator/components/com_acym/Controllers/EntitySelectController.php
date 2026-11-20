@@ -41,6 +41,10 @@ class EntitySelectController extends AcymController
             return ['error' => acym_translation('ACYM_MISSING_PARAMETERS')];
         }
 
+        if (!in_array($entity, ['list', 'user'])) {
+            return ['error' => acym_translation('ACYM_UNAUTHORIZED_ACCESS')];
+        }
+
         $entityParams = [
             'offset' => $offset,
             'elementsPerPage' => $perCalls,
@@ -49,11 +53,19 @@ class EntitySelectController extends AcymController
         if ($entity === 'list') {
             $entityParams['status'] = 'active';
         }
-        if (!empty($join)) $entityParams['join'] = $join;
-        if (!empty($columnsToDisplay)) $entityParams['columns'] = $columnsToDisplay;
+        if (!empty($join)) {
+            $entityParams['join'] = $join;
+        }
+        if (!empty($columnsToDisplay)) {
+            foreach ($columnsToDisplay as $column) {
+                acym_secureDBColumn($column);
+            }
+            $entityParams['columns'] = $columnsToDisplay;
+        }
 
         if ('list' === $entity) {
             $entityParams['columns'][] = 'description';
+            $entityParams['columns'][] = 'active';
         }
 
         if (!acym_isAdmin()) {
@@ -74,15 +86,31 @@ class EntitySelectController extends AcymController
     {
         if ($entity === 'list') {
             foreach ($availableEntity['elements'] as $key => $element) {
-                $availableEntity['elements'][$key]->color = '<i style="color: '.$element->color.'" class="acym_subscription acymicon-circle">';
+                $availableEntity['elements'][$key]->color = '<i style="color: '.acym_escape(
+                        $element->color ?? '#0079d3'
+                    ).'" class="acym_subscription acymicon-circle">';
+                $availableEntity['elements'][$key]->name = acym_escapeHtml($element->name);
+                if (empty($element->active)) {
+                    $availableEntity['elements'][$key]->name .= '<span class="acym__entity_select__list__inactive">'.acym_escapeHtml(
+                            acym_translation('ACYM_INACTIVE')
+                        ).'</span>';
+                }
                 if (!empty($element->description)) {
-                    $availableEntity['elements'][$key]->name = $element->name.acym_info(['textShownInTooltip' => $element->description]);
+                    ob_start();
+                    acym_info(['textShownInTooltip' => acym_escapeHtml($element->description)]);
+                    $availableEntity['elements'][$key]->name .= ob_get_clean();
                 }
             }
         } elseif ($entity === 'user') {
             foreach ($availableEntity['elements'] as $key => $element) {
-                $availableEntity['elements'][$key]->email = $element->email.'<span class="acym__hover__user_info" data-id="'.$availableEntity['elements'][$key]->id.'">
-                '.acym_info(['textShownInTooltip' => '<i class="acymicon-circle-o-notch acymicon-spin"></i>']).'
+                ob_start();
+                acym_info(['textShownInTooltip' => '<i class="acymicon-circle-o-notch acymicon-spin"></i>']);
+                $tooltip = ob_get_clean();
+                $availableEntity['elements'][$key]->name = acym_escapeHtml($element->name ?? '');
+                $availableEntity['elements'][$key]->email = acym_escapeHtml($element->email).'<span class="acym__hover__user_info" data-id="'.acym_escape(
+                        $element->id
+                    ).'">
+                '.$tooltip.'
                 </span>';
             }
         }

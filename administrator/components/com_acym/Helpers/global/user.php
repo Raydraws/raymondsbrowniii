@@ -1,4 +1,5 @@
 <?php
+defined('_JEXEC') || die('Restricted Access');
 
 function acym_getCmsUserIdByEmail(string $email): int
 {

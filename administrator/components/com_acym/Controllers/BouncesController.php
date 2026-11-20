@@ -30,7 +30,6 @@ class BouncesController extends AcymController
     public function storeRedirectListing(bool $fromListing = false): void
     {
         $variableName = 'ctrl_mailboxes_stored';
-        acym_session();
         $taskToStore = [
             '',
             'bounces',
@@ -41,8 +40,9 @@ class BouncesController extends AcymController
             return;
         }
 
-        if ((empty($currentTask) || !in_array($currentTask, $taskToStore)) && !empty($_SESSION[$variableName])) {
-            $taskToGo = is_array($_SESSION[$variableName]) ? $_SESSION[$variableName]['task'] : $_SESSION[$variableName];
+        $controller = acym_getVar('RAW', $variableName, null, 'SESSION');
+        if ((empty($currentTask) || !in_array($currentTask, $taskToStore)) && !empty($controller)) {
+            $taskToGo = is_array($controller) ? $controller['task'] : $controller;
             $link = acym_completeLink('bounces&task='.$taskToGo, false, true);
             if ($this->runBounce) {
                 $link .= '&runBounce=1';
@@ -53,7 +53,7 @@ class BouncesController extends AcymController
             if (empty($currentTask) || !in_array($currentTask, $taskToStore)) {
                 $currentTask = 'bounces';
             }
-            $_SESSION[$variableName] = $currentTask;
+            acym_setSession($variableName, $currentTask);
         }
 
         $taskToCall = is_array($currentTask) ? $currentTask['task'] : $currentTask;
@@ -66,7 +66,7 @@ class BouncesController extends AcymController
     {
         $data['search'] = $this->getVarFiltersListing('string', 'mailboxes_search', '');
         $data['status'] = $this->getVarFiltersListing('string', 'mailboxes_status', '');
-        $data['ordering'] = $this->getVarFiltersListing('string', 'mailboxes_ordering', 'id');
-        $data['orderingSortOrder'] = $this->getVarFiltersListing('string', 'mailboxes_ordering_sort_order', 'desc');
+        $data['ordering'] = $this->getVarFiltersListing('cmd', 'mailboxes_ordering', 'id');
+        $data['orderingSortOrder'] = $this->getVarFiltersListing('cmd', 'mailboxes_ordering_sort_order', 'desc');
     }
 }

@@ -48,6 +48,7 @@ define('ACYM_CUSTOM_PLUGIN_LAYOUT', ACYM_MEDIA.'plugins'.DS);
 define('ACYM_LOGS_FOLDER', ACYM_MEDIA_FOLDER.'logs'.DS);
 define('ACYM_TMP_FOLDER', ACYM_MEDIA.'tmp'.DS);
 
+//Avoid the issue with 3.0.0_beta
 $jversion = preg_replace('#[^0-9\.]#i', '', JVERSION);
 define('ACYM_CMSV', $jversion);
 define('ACYM_J30', version_compare($jversion, '3.0.0', '>='));
@@ -55,12 +56,13 @@ define('ACYM_J37', version_compare($jversion, '3.7.0', '>='));
 define('ACYM_J39', version_compare($jversion, '3.9.0', '>='));
 define('ACYM_J40', version_compare($jversion, '4.0.0', '>='));
 define('ACYM_J50', version_compare($jversion, '5.0.0', '>='));
+define('ACYM_J53', version_compare($jversion, '5.3.0', '>='));
 
 define('ACYM_ALLOWRAW', defined('JREQUEST_ALLOWRAW') ? JREQUEST_ALLOWRAW : 2);
 define('ACYM_ALLOWHTML', defined('JREQUEST_ALLOWHTML') ? JREQUEST_ALLOWHTML : 4);
 define('ACYM_ADMIN_GROUP', 8);
 define('ACYM_PLUGINS_URL', ACYM_BACK);
-define('ACYM_AVAILABLE_PLUGINS', json_encode([]));
+define('ACYM_AVAILABLE_PLUGINS', []);
 
 function acym_rootURI(bool $pathonly = false, ?string $path = null): string
 {

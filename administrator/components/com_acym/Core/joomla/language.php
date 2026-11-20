@@ -5,6 +5,7 @@ use Joomla\CMS\Language\Language;
 use Joomla\CMS\Factory;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Installer\Installer;
+use Joomla\CMS\Component\ComponentHelper;
 
 global $acymLanguages;
 
@@ -93,7 +94,23 @@ function acym_getLanguageTag(bool $simple = false): string
     return $simple ? substr($langCode, 0, 2) : $langCode;
 }
 
-function acym_loadLanguageFile(string $extension = 'joomla', string $basePath = JPATH_SITE, ?string $lang = null, bool $reload = false, bool $default = true): void
+function acym_getSiteLanguageTag(bool $simple = false): string
+{
+    // The application overrides its config language with the one it currently runs in, the default site language is only in com_languages
+    $langCode = ComponentHelper::getParams('com_languages')->get('site');
+
+    if (empty($langCode)) {
+        $langCode = Factory::getConfig()->get('language');
+    }
+
+    if (empty($langCode)) {
+        $langCode = acym_getLanguageTag();
+    }
+
+    return $simple ? substr($langCode, 0, 2) : $langCode;
+}
+
+function acym_loadLanguageFile(string $extension = 'joomla', ?string $basePath = JPATH_SITE, ?string $lang = null, bool $reload = false, bool $default = true): void
 {
     if (ACYM_J40) {
         $acylanguage = Factory::getLanguage();
@@ -109,23 +126,28 @@ function acym_getLanguagePath(string $basePath = ACYM_BASE, ?string $language = 
     return LanguageHelper::getLanguagePath(rtrim($basePath, DS), $language);
 }
 
-function acym_languageOption(?string $emailLanguage, string $name): string
+function acym_languageOption(?string $emailLanguage, string $name): void
 {
     $languages = acym_getLanguages(true, true);
-    if (count($languages) < 2) return '';
+    if (count($languages) < 2) {
+        return;
+    }
 
     $default = new stdClass();
     $default->language = '';
     $default->name = acym_translation('ACYM_DEFAULT');
     array_unshift($languages, $default);
 
-    return acym_select(
+    acym_select(
         $languages,
         $name,
         $emailLanguage,
         ['class' => 'acym__select'],
         'language',
-        'name'
+        'name',
+        null,
+        false,
+        true
     );
 }
 

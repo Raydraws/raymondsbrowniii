@@ -89,19 +89,24 @@ class plgAcymAcychecker extends AcymPlugin
 
     public function onAcymBeforeUserCreate(&$user)
     {
+        // CTE isn't installed
         if (!acym_isAcyCheckerInstalled()) return true;
 
+        // The email verification is disabled in the configuration
         if ($this->config->get('email_verification') == 0) return true;
 
         $this->loadAcychecker();
 
-        $cteConfig = new ConfigurationClass();
+        $cteConfig = ConfigurationClass::getConfiguration();
         $conditions = $cteConfig->get('registration_conditions');
 
+        // If no condition is selected, return
         if (empty($conditions) || $conditions === 'domain_not_exists') return true;
 
+        // Perform test using CTE code API
         $apiService = new ApiService();
 
+        // Retro compatibility for AcyChecker 1.4
         if (method_exists($apiService, 'testUser')) {
             $testUser = new stdClass();
             $testUser->email = $user->email;

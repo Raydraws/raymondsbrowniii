@@ -37,9 +37,9 @@ class ActionClass extends AcymClass
     public function getActionsByConditionId(int $id): array
     {
         $actions = acym_loadObjectList(
-            'SELECT action.* 
-            FROM #__acym_action as action 
-            WHERE action.condition_id = '.intval($id)
+            'SELECT * 
+            FROM #__acym_action 
+            WHERE condition_id = '.intval($id)
         );
 
         array_map([$this, 'fixTypes'], $actions);
@@ -116,7 +116,7 @@ class ActionClass extends AcymClass
                 ON `action`.`condition_id` = `condition`.`id` 
             JOIN `#__acym_step` AS `step` 
                 ON `condition`.`step_id` = `step`.`id` 
-            WHERE `step`.`automation_id` = '.$id
+            WHERE `step`.`automation_id` = '.intval($id)
         );
         array_map([$this, 'fixTypes'], $actions);
 

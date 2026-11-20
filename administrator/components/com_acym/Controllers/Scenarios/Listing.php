@@ -13,8 +13,8 @@ trait Listing
         if (!acym_level(ACYM_ENTERPRISE)) {
             acym_redirect(acym_completeLink('dashboard&task=upgrade&version=enterprise', false, true));
         }
-        $ordering = $this->getVarFiltersListing('string', 'scenario_ordering', 'ordering');
-        $orderingSortOrder = $this->getVarFiltersListing('string', 'scenario_ordering_sort_order', 'asc');
+        $ordering = $this->getVarFiltersListing('cmd', 'scenario_ordering', 'ordering');
+        $orderingSortOrder = $this->getVarFiltersListing('cmd', 'scenario_ordering_sort_order', 'asc');
 
         acym_setVar('layout', 'listing');
 
@@ -35,13 +35,14 @@ trait Listing
     {
         $data['search'] = $this->getVarFiltersListing('string', 'scenario_search', '');
         $data['status'] = $this->getVarFiltersListing('string', 'scenarios_status', '');
-        $data['ordering'] = $this->getVarFiltersListing('string', 'scenarios_ordering', 'id');
-        $data['ordering_sort_order'] = $this->getVarFiltersListing('string', 'scenarios_ordering_sort_order', 'asc');
+        $data['ordering'] = $this->getVarFiltersListing('cmd', 'scenarios_ordering', 'id');
+        $data['ordering_sort_order'] = $this->getVarFiltersListing('cmd', 'scenarios_ordering_sort_order', 'asc');
         $data['page'] = $this->getVarFiltersListing('int', 'scenarios_pagination_page', 1);
     }
 
     private function prepareListingElements(array &$data): void
     {
+        // Prepare the pagination
         $scenarioPerPage = $data['pagination']->getListLimit();
 
         $matchingScenarios = $this->getMatchingElementsFromData(
@@ -99,11 +100,12 @@ trait Listing
 
         $order = json_decode(acym_getVar('string', 'order', '[]'), true);
 
+        $error = false;
         foreach ($order as $index => $scenarioId) {
             $query = 'UPDATE #__acym_scenario SET `ordering` = '.intval($index + 1).' WHERE `id` = '.intval($scenarioId);
-            acym_query($query);
+            $error = acym_query($query) < 0 || $error;
         }
 
-        acym_sendAjaxResponse($order, [], true);
+        acym_sendAjaxResponse('', [], !$error);
     }
 }

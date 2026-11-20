@@ -3,6 +3,7 @@
 namespace AcyMailing\Controllers;
 
 use AcyMailing\Classes\CampaignClass;
+use AcyMailing\Classes\HistoryClass;
 use AcyMailing\Classes\MailClass;
 use AcyMailing\Classes\ListClass;
 use AcyMailing\Classes\UserClass;
@@ -15,6 +16,7 @@ use AcyMailing\Controllers\Campaigns\Followup;
 use AcyMailing\Controllers\Campaigns\ListEmails;
 use AcyMailing\Controllers\Campaigns\Listing;
 use AcyMailing\Controllers\Campaigns\Tests;
+use AcyMailing\Controllers\Shared\EditorActions;
 
 class CampaignsController extends AcymController
 {
@@ -25,6 +27,7 @@ class CampaignsController extends AcymController
     use Edition;
     use Actions;
     use Tests;
+    use EditorActions;
 
     const TASK_TYPE_CAMPAIGN = 'campaigns';
     const TASK_TYPE_CAMPAIGN_AUTO = 'campaigns_auto';
@@ -80,52 +83,6 @@ class CampaignsController extends AcymController
         $this->storeRedirectListing();
     }
 
-    public function cancelDashboardAndGetCampaignsAjax(): void
-    {
-        $campaignId = acym_getVar('int', 'campaignId');
-        $campaignClass = new CampaignClass();
-
-        if (empty($campaignId)) {
-            acym_sendAjaxResponse(acym_translation('ACYM_CAMPAIGN_NOT_FOUND'), [], false);
-        }
-
-        $campaign = new \stdClass();
-        $campaign->id = $campaignId;
-        $campaign->active = 0;
-        $campaign->draft = 1;
-
-        $campaignId = $campaignClass->save($campaign);
-        if (empty($campaignId)) {
-            acym_sendAjaxResponse(acym_translation('ACYM_CAMPAIGN_CANT_BE_SAVED'), [], false);
-        }
-
-        $campaigns = $campaignClass->getCampaignForDashboard();
-
-        if (empty($campaigns)) {
-            $result = '<h1 class="acym__dashboard__active-campaigns__none">'.acym_translation('ACYM_NONE_OF_YOUR_CAMPAIGN_SCHEDULED_GO_SCHEDULE_ONE').'</h1>';
-            acym_sendAjaxResponse('', ['content' => $result]);
-        }
-
-        $result = '';
-
-        foreach ($campaigns as $campaign) {
-            $result .= '<div class="cell grid-x acym__dashboard__active-campaigns__one-campaign">
-                        <a class="acym__dashboard__active-campaigns__one-campaign__title medium-4 small-12" href="'.acym_completeLink(
-                    'campaigns&task=edit&step=editEmail&id='
-                ).$campaign->id.'">'.$campaign->name.'</a>
-                        <div class="acym__dashboard__active-campaigns__one-campaign__state medium-2 small-12 acym__background-color__blue text-center"><span>'.acym_translation(
-                    'ACYM_SCHEDULED'
-                ).' : '.acym_getDate($campaign->sending_date, 'ACYM_DATE_FORMAT_LC3').'</span></div>
-                        <div class="medium-6 small-12"><p id="'.$campaign->id.'" class="acym__dashboard__active-campaigns__one-campaign__action acym__color__dark-gray">'.acym_translation(
-                    'ACYM_CANCEL_SCHEDULING'
-                ).'</p></div>
-                    </div>
-                    <hr class="cell small-12">';
-        }
-
-        acym_sendAjaxResponse('', ['content' => $result]);
-    }
-
     public function ajaxCountNumberOfRecipients(): void
     {
         $listsSelected = acym_getVar('array', 'listsSelected', []);
@@ -139,13 +96,15 @@ class CampaignsController extends AcymController
 
     public function deleteAttachmentAjax(): void
     {
+        acym_checkToken();
+
         $mailId = acym_getVar('int', 'mail', 0);
         $attachmentId = acym_getVar('int', 'id', 0);
 
         if (!empty($mailId) && $attachmentId >= 0) {
             $mailClass = new MailClass();
 
-            if (!$mailClass->hasUserAccess($mailId)) {
+            if (!$mailClass->hasUserAccess($mailId, true)) {
                 acym_sendAjaxResponse(acym_translation('ACYM_COULD_NOT_DELETE_ATTACHMENT'), [], false);
             }
 
@@ -159,6 +118,8 @@ class CampaignsController extends AcymController
 
     public function test(): void
     {
+        acym_checkToken();
+
         $campaignId = acym_getVar('int', 'campaignId', 0);
         $specificMailId = acym_getVar('int', 'mailId', 0);
 
@@ -169,8 +130,16 @@ class CampaignsController extends AcymController
             acym_sendAjaxResponse(acym_translation('ACYM_CAMPAIGN_NOT_FOUND'), [], false);
         }
 
+        if (!$campaignClass->hasUserAccess($campaignId)) {
+            acym_sendAjaxResponse(acym_translation('ACYM_ACCESS_DENIED'), [], false);
+        }
+
+        $mailClassAccess = new MailClass();
+        if (!empty($specificMailId) && $mailClassAccess->getMainMailId($specificMailId) !== (int)$campaign->mail_id) {
+            acym_sendAjaxResponse(acym_translation('ACYM_ACCESS_DENIED'), [], false);
+        }
+
         $mailerHelper = new MailerHelper();
-        $mailerHelper->autoAddUser = true;
         $mailerHelper->report = false;
         if (!empty($specificMailId)) {
             $mailerHelper->isAbTest = $campaignClass->isAbTestMail($specificMailId);
@@ -186,22 +155,35 @@ class CampaignsController extends AcymController
         if (acym_isMultilingual()) {
             $translatedMails = $mailClass->getTranslationsById($campaign->mail_id, true, true);
         }
-        $testEmails = explode(',', acym_getVar('string', 'test_emails'));
+
+        $rawTestEmails = explode(',', acym_getVar('string', 'test_emails'));
+        $testEmails = [];
+        foreach ($rawTestEmails as $email) {
+            $email = trim($email);
+            if (acym_isValidEmail($email) || is_numeric($email)) {
+                $testEmails[] = $email;
+            }
+        }
+
+        if (empty($testEmails)) {
+            acym_sendAjaxResponse(acym_translation('ACYM_NO_VALID_TEST_EMAILS'), [], false);
+
+            return;
+        }
+
+        $historyClass = new HistoryClass();
 
         foreach ($testEmails as $oneAddress) {
+            if (is_numeric($oneAddress)) {
+                $receiver = $userClass->getOneById($oneAddress);
+            } else {
+                $receiver = $userClass->getOneByEmail($oneAddress, true);
+            }
+
             $mailId = $specificMailId;
             if (empty($mailId)) {
                 if (acym_isMultilingual()) {
-                    if (is_numeric($oneAddress)) {
-                        $user = $userClass->getOneById($oneAddress);
-                    } else {
-                        $user = $userClass->getOneByEmail($oneAddress);
-                    }
-                    if (empty($user)) {
-                        $mailId = $campaign->mail_id;
-                    } else {
-                        $mailId = empty($translatedMails[$user->language]) ? $campaign->mail_id : $translatedMails[$user->language]->id;
-                    }
+                    $mailId = empty($receiver) || empty($translatedMails[$receiver->language]) ? $campaign->mail_id : $translatedMails[$receiver->language]->id;
                 } else {
                     $mailId = $campaign->mail_id;
                 }
@@ -211,7 +193,9 @@ class CampaignsController extends AcymController
                 'isTest' => true,
                 'testNote' => $testNote,
             ];
-            if (!$mailerHelper->sendOne($mailId, $oneAddress, $options)) {
+            if ($mailerHelper->sendOne($mailId, $receiver, $options)) {
+                $historyClass->insert($receiver->id, 'test_sent', [], $mailId);
+            } else {
                 $success = false;
             }
 
@@ -235,26 +219,12 @@ class CampaignsController extends AcymController
 
     public function saveAsTmplAjax(): void
     {
-        if (!acym_isAdmin()) {
+        if (!acym_isAdmin() || (!acym_isAllowed('campaigns') && !acym_isAllowed('mails'))) {
             die('Access denied');
         }
 
         $mailController = new MailsController();
         $mailId = $mailController->store(true);
         acym_sendAjaxResponse(!empty($mailId) ? '' : acym_translation('ACYM_ERROR_SAVING'), ['result' => $mailId], !empty($mailId));
-    }
-
-    public function searchTestReceiversAjax(): void
-    {
-        $search = acym_getVar('string', 'search', '');
-        $userClass = new UserClass();
-        $users = $userClass->getUsersLikeEmail($search);
-
-        $return = [];
-        foreach ($users as $oneUser) {
-            $return[] = [$oneUser->id, $oneUser->email];
-        }
-        echo json_encode($return);
-        exit;
     }
 }

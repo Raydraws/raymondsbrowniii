@@ -27,7 +27,7 @@ function acym_cmsModal(
     int     $height = 400
 ): string {
     if (empty($identifier)) {
-        $identifier = 'identifier_'.rand(1000, 9000);
+        $identifier = 'identifier_'.acym_rand(1000, 9000);
     }
 
     $params = [
@@ -101,6 +101,7 @@ function acym_getArticleURL(int $id, bool $popup, string $text): string
     if (ACYM_J40) {
         $url = RouteHelper::getArticleRoute($articleid, $category, $article->language);
     } else {
+        // Make sure the Joomla link generator class is loaded
         if (!class_exists('ContentHelperRoute')) {
             $contentHelper = JPATH_SITE.DS.'components'.DS.'com_content'.DS.'helpers'.DS.'route.php';
             if (!file_exists($contentHelper)) return '';
@@ -113,7 +114,9 @@ function acym_getArticleURL(int $id, bool $popup, string $text): string
         $url .= (strpos($url, '?') ? '&' : '?').acym_noTemplate();
         $url = acym_frontModal(acym_route($url), $text, false);
     } else {
-        $url = '<a title="'.acym_translation($text, true).'" href="'.acym_escape(acym_route($url)).'" target="_blank">'.acym_translation($text).'</a>';
+        $url = '<a title="'.acym_translation($text, true).'" href="'.acym_escape(acym_route($url)).'" target="_blank" rel="noopener noreferrer" aria-label="'.acym_escape(
+                acym_translation($text).', '.acym_translation('ACYM_OPENS_NEW_WINDOW')
+            ).'">'.acym_translation($text).'</a>';
     }
 
     return $url;

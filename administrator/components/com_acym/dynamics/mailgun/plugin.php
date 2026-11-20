@@ -35,14 +35,13 @@ class plgAcymMailgun extends AcymPlugin
         $config = empty($data['tab']) ? $this->config : $data['tab']->config;
         $defaultDomain = $config->get(self::SENDING_METHOD_ID.'_api_domain');
         $defaultApiKey = $config->get(self::SENDING_METHOD_ID.'_api_key');
-        ob_start();
         ?>
-		<div class="send_settings cell grid-x acym_vcenter" id="<?php echo self::SENDING_METHOD_ID; ?>_settings">
+		<div class="send_settings cell grid-x acym_vcenter" id="<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_settings">
 			<div class="cell grid-x acym_vcenter acym__sending__methods__one__settings">
 				<label class="cell large-3 medium-4 margin-right-1">
                     <?php
-                    echo acym_translationSprintf('ACYM_SENDING_METHOD_API_REGION', self::SENDING_METHOD_NAME);
-                    echo acym_info(
+                    echo acym_escapeHtml(acym_translationSprintf('ACYM_SENDING_METHOD_API_REGION', self::SENDING_METHOD_NAME));
+                    acym_info(
                         [
                             'textShownInTooltip' => acym_translationSprintf('ACYM_SENDING_METHOD_API_REGION_DESC', self::SENDING_METHOD_NAME),
                         ]
@@ -50,7 +49,7 @@ class plgAcymMailgun extends AcymPlugin
                     ?>
 				</label>
                 <?php
-                echo acym_radio(
+                acym_radio(
                     $regions,
                     'config['.self::SENDING_METHOD_ID.'_api_region]',
                     $this->config->get(self::SENDING_METHOD_ID.'_api_region', 'us')
@@ -58,37 +57,40 @@ class plgAcymMailgun extends AcymPlugin
                 ?>
 			</div>
 			<div class="cell grid-x acym_vcenter acym__sending__methods__one__settings">
-				<label class="cell" for="<?php echo self::SENDING_METHOD_ID; ?>_settings_api-domain">
-                    <?php echo acym_translationSprintf(
-                        'ACYM_SENDING_METHOD_API_DOMAIN',
-                        self::SENDING_METHOD_NAME
+				<label class="cell" for="<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_settings_api-domain">
+                    <?php echo acym_escapeHtml(
+                        acym_translationSprintf(
+                            'ACYM_SENDING_METHOD_API_DOMAIN',
+                            self::SENDING_METHOD_NAME
+                        )
                     ); ?>
 				</label>
 				<input type="text"
-					   id="<?php echo self::SENDING_METHOD_ID; ?>_settings_api-domain"
-					   value="<?php echo empty($defaultDomain) ? $this->config->get(self::SENDING_METHOD_ID.'_api_domain') : $defaultDomain; ?>"
-					   name="config[<?php echo self::SENDING_METHOD_ID; ?>_api_domain]"
-					   class="cell acym__configuration__mail__settings__text">
+				       id="<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_settings_api-domain"
+				       value="<?php echo acym_escape(empty($defaultDomain) ? $this->config->get(self::SENDING_METHOD_ID.'_api_domain') : $defaultDomain); ?>"
+				       name="config[<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_api_domain]"
+				       class="cell acym__configuration__mail__settings__text">
 			</div>
 			<div class="cell grid-x acym_vcenter acym__sending__methods__one__settings">
-				<label class="cell shrink margin-right-1" for="<?php echo self::SENDING_METHOD_ID; ?>_settings_api-key">
-                    <?php echo acym_translationSprintf(
-                        'ACYM_SENDING_METHOD_API_KEY',
-                        self::SENDING_METHOD_NAME
+				<label class="cell shrink margin-right-1" for="<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_settings_api-key">
+                    <?php echo acym_escapeHtml(
+                        acym_translationSprintf(
+                            'ACYM_SENDING_METHOD_API_KEY',
+                            self::SENDING_METHOD_NAME
+                        )
                     ); ?>
 				</label>
-                <?php echo $this->getLinks('https://signup.mailgun.com/new/signup', 'https://www.mailgun.com/pricing/'); ?>
+                <?php $this->getLinks('https://signup.mailgun.com/new/signup', 'https://www.mailgun.com/pricing/'); ?>
 				<input type="text"
-					   id="<?php echo self::SENDING_METHOD_ID; ?>_settings_api-key"
-					   value="<?php echo empty($defaultApiKey) ? $this->config->get(self::SENDING_METHOD_ID.'_api_key') : $defaultApiKey; ?>"
-					   name="config[<?php echo self::SENDING_METHOD_ID; ?>_api_key]"
-					   class="cell acym__configuration__mail__settings__text">
-                <?php echo $this->getTestCredentialsSendingMethodButton(self::SENDING_METHOD_ID); ?>
-                <?php echo $this->getCopySettingsButton($data, self::SENDING_METHOD_ID, 'wp_mail_smtp'); ?>
+				       id="<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_settings_api-key"
+				       value="<?php echo acym_escape(empty($defaultApiKey) ? $this->config->get(self::SENDING_METHOD_ID.'_api_key') : $defaultApiKey); ?>"
+				       name="config[<?php echo acym_escape(self::SENDING_METHOD_ID); ?>_api_key]"
+				       class="cell acym__configuration__mail__settings__text">
+                <?php $this->getTestCredentialsSendingMethodButton(self::SENDING_METHOD_ID); ?>
+                <?php $this->getCopySettingsButton($data, self::SENDING_METHOD_ID, 'wp_mail_smtp'); ?>
 			</div>
 		</div>
         <?php
-        $data['sendingMethodsHtmlSettings'][self::SENDING_METHOD_ID] = ob_get_clean();
     }
 
     public function onAcymTestCredentialSendingMethod($sendingMethod, $credentials)
@@ -108,6 +110,7 @@ class plgAcymMailgun extends AcymPlugin
 
         $response = $this->callApiSendingMethod($this->sendingMethodApiUrl.'messages', $data, $headers, 'POST', $authentication, true);
 
+        // If call didn't work, the response is always null
         if (empty($response)) {
             acym_sendAjaxResponse(acym_translation('ACYM_AUTHENTICATION_FAILS_WITH_API_KEY'), [], false);
         } else {
@@ -117,6 +120,7 @@ class plgAcymMailgun extends AcymPlugin
 
     public function onAcymSendEmail(&$response, $mailerHelper, $to, $from, $replyTo, $bcc = [], $attachments = [], $sendingMethodListParams = [])
     {
+        //https://documentation.mailgun.com/en/latest/user_manual.html#sending-via-api
         if ($mailerHelper->externalMailer !== self::SENDING_METHOD_ID) return;
 
         $this->setSendingMethodApiUrl();
@@ -147,17 +151,22 @@ class plgAcymMailgun extends AcymPlugin
             }
         }
 
+        $files = [];
         if (!empty($attachments)) {
             foreach ($attachments as $key => $attachment) {
-                $data['attachment['.$key.']'] = curl_file_create($attachment[0]);
+                $files[] = [
+                    'name' => 'attachment['.$key.']',
+                    'path' => $attachment[0],
+                    'filename' => basename($attachment[0]),
+                ];
             }
         }
 
-        $responseMailer = $this->callApiSendingMethod($this->sendingMethodApiUrl.'messages', $data, $headers, 'POST', $authentication, true);
+        $responseMailer = $this->callApiSendingMethod($this->sendingMethodApiUrl.'messages', $data, $headers, 'POST', $authentication, true, $files);
 
-        if (empty($responseMailer['message']) || empty($responseMailer['id']) || $responseMailer['message'] != 'Queued. Thank you.') {
+        if (empty($responseMailer['message']) || empty($responseMailer['id']) || $responseMailer['message'] !== 'Queued. Thank you.') {
             $response['error'] = true;
-            $response['message'] = $responseMailer['message'];
+            $response['message'] = $responseMailer['message'] ?? ($responseMailer['error_curl'] ?? acym_translation('ACYM_ERROR'));
         } else {
             $response['error'] = false;
         }
@@ -179,6 +188,13 @@ class plgAcymMailgun extends AcymPlugin
         }
     }
 
+    /**
+     * @param array  $credentials
+     * @param string $sendingMethod
+     * @param array  $sendingMethodListParams this parameter is only used for the plugin sending method list
+     *
+     * @return void
+     */
     public function onAcymGetCredentialsSendingMethod(array &$credentials, string $sendingMethod, array $sendingMethodListParams = [])
     {
         if ($sendingMethod != self::SENDING_METHOD_ID) return;

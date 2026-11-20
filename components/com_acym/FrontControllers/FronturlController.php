@@ -50,49 +50,89 @@ class FronturlController extends AcymController
         $userStatClass = new UserStatClass();
         $userStat = $userStatClass->getOneByMailAndUserId($mailId, $userId);
 
-        if (empty($mail) || empty($userStat) || acym_isRobot()) {
-            acym_redirect($urlObject->url);
+        // The mail has been deleted, or we didn't send this email to this user, or it's a bot
+        $delay = $this->config->get('tracking_delay', 0);
+        if (empty($mail) || empty($userStat) || acym_isRobot() || (!empty($delay) && acym_getTimeFromUTCDate($userStat->send_date) > time() - $delay)) {
+            acym_redirect($this->resolveSubscriberTags($urlObject->url, $userId), '', 'message', false);
         }
+
+        $anonymousStats = !empty($this->config->get('anonymous_stats', 0));
 
         $urlClick = new \stdClass();
         $urlClick->mail_id = $mailId;
         $urlClick->url_id = $urlObject->id;
         $urlClick->click = 1;
-        $urlClick->user_id = $userId;
-        $urlClick->date_click = acym_date('now', 'Y-m-d H:i:s');
+        $urlClick->user_id = $anonymousStats ? 0 : $userId;
+        $urlClick->date_click = acym_date('now', 'Y-m-d H:i:s', false);
 
         $mailStatClass = new MailStatClass();
         $urlClickClass = new UrlClickClass();
         $urlClickClass->save($urlClick);
 
-        if (empty($userStat->open)) {
-            $userStatToInsert = new \stdClass();
-            $userStatToInsert->user_id = $userId;
-            $userStatToInsert->mail_id = $mailId;
-            $userStatToInsert->open = 1;
-            $userStatToInsert->open_date = acym_date('now', 'Y-m-d H:i:s');
-            $userStatClass->save($userStatToInsert);
+        UserStatClass::triggerActivity('user_click', $userId, $mailId);
 
+        if (!$anonymousStats) {
+            if (empty($userStat->open)) {
+                $userStatToInsert = new \stdClass();
+                $userStatToInsert->user_id = $userId;
+                $userStatToInsert->mail_id = $mailId;
+                $userStatToInsert->open = 1;
+                $userStatToInsert->open_date = acym_date('now', 'Y-m-d H:i:s', false);
+                $userStatClass->save($userStatToInsert);
+
+                $mailStat = new \stdClass();
+                $mailStat->mail_id = $mailId;
+                $mailStat->open_unique = 1;
+                $mailStat->open_total = 1;
+                $mailStatClass->save($mailStat);
+
+                UserStatClass::triggerActivity('user_open', $userId, $mailId);
+            }
+
+            $clickStats = $urlClickClass->getOneByMailIdAndUserId($mailId, $userId);
+            $mailStatClass->incrementClicks($mailId, $clickStats->click == 1);
+        } else {
+            $mailStatClass->incrementClicks($mailId, true);
+
+            // Anonymous mode tracks totals only and keeps no per-recipient open state, so this is not deduplicated.
             $mailStat = new \stdClass();
             $mailStat->mail_id = $mailId;
             $mailStat->open_unique = 1;
             $mailStat->open_total = 1;
             $mailStatClass->save($mailStat);
+            $mailStatClass->incrementDetail($mailId, 'open_time', acym_date('now', 'Y-m-d H', false).':00:00');
         }
-
-        $clickStats = $urlClickClass->getOneByMailIdAndUserId($mailId, $userId);
-        $mailStatClass->incrementClicks($mailId, $clickStats->click == 1);
 
         $userClass = new UserClass();
         $subscriber = $userClass->getOneById($userId);
         if (!empty($subscriber)) {
-            $subscriber->last_open_date = acym_date('now', 'Y-m-d H:i:s');
-            $subscriber->last_click_date = acym_date('now', 'Y-m-d H:i:s');
+            $subscriber->last_open_date = acym_date('now', 'Y-m-d H:i:s', false);
+            $subscriber->last_click_date = acym_date('now', 'Y-m-d H:i:s', false);
             $userClass->triggers = false;
             $userClass->sendConf = false;
             $userClass->save($subscriber);
         }
 
-        acym_redirect($urlObject->url);
+        acym_redirect($this->resolveSubscriberTags($urlObject->url, $userId), '', 'message', false);
+    }
+
+    private function resolveSubscriberTags(string $url, int $userId): string
+    {
+        if (!preg_match('#\{|%7B#i', $url)) {
+            return $url;
+        }
+
+        $userClass = new UserClass();
+        $subscriber = $userClass->identify(true, 'userid', 'userkey');
+
+        if (empty($subscriber) || (int)$subscriber->id !== $userId) {
+            return $url;
+        }
+
+        $tempEmail = new \stdClass();
+        $tempEmail->body = $url;
+        acym_trigger('replaceUserInformation', [&$tempEmail, &$subscriber, true]);
+
+        return $tempEmail->body;
     }
 }

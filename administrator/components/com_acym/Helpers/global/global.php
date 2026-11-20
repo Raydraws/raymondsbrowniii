@@ -1,8 +1,13 @@
 <?php
+defined('_JEXEC') || die('Restricted Access');
 
 use AcyMailing\Classes\ConfigurationClass;
+use AcyMailing\Helpers\SecurityHelper;
 
-function acydump($arg, bool $ajax = false, array $options = []): void
+/**
+ * @param ?mixed $arg
+ */
+function acym_dump($arg, bool $ajax = false, array $options = []): void
 {
     $indent = $options['indent'] ?? true;
     $htmlentities = $options['htmlentities'] ?? true;
@@ -11,8 +16,10 @@ function acydump($arg, bool $ajax = false, array $options = []): void
     if (is_object($arg) && isset($arg->config)) {
         $safeArg = clone $arg;
         unset($safeArg->config);
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_var_dump -- For debug during support only.
         var_dump($safeArg);
     } else {
+        // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_var_dump -- For debug during support only.
         var_dump($arg);
     }
     $result = ob_get_clean();
@@ -28,7 +35,8 @@ function acydump($arg, bool $ajax = false, array $options = []): void
         file_put_contents($logsPath, $result, FILE_APPEND);
     } else {
         $style = $indent ? 'margin-left: 220px;' : '';
-        echo '<pre style="'.$style.'">';
+        echo '<pre style="'.acym_escape($style).'">';
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- For debug during support only.
         echo $htmlentities ? htmlentities($result) : $result;
         echo '</pre>';
     }
@@ -36,13 +44,14 @@ function acydump($arg, bool $ajax = false, array $options = []): void
 
 function acym_debug(bool $file = false, bool $indent = true)
 {
+    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_debug_backtrace -- Debug for support tickets.
     $debug = debug_backtrace();
     $takenPath = [];
     foreach ($debug as $step) {
         if (empty($step['file']) || empty($step['line'])) continue;
         $takenPath[] = $step['file'].' => '.$step['line'];
     }
-    acydump(implode("\n", $takenPath), $file, ['indent' => $indent]);
+    acym_dump(implode("\n", $takenPath), $file, ['indent' => $indent]);
 }
 
 function acym_config(bool $reload = false): ConfigurationClass
@@ -56,6 +65,11 @@ function acym_config(bool $reload = false): ConfigurationClass
     return $configClass;
 }
 
+/**
+ * @param mixed  $messages The messages displayed, either a string or an array or strings
+ * @param string $type     Type of the message: success, error, warning, info
+ * @param bool   $close    Allow or not to close the message zone
+ */
 function acym_display($messages, string $type = 'success', bool $close = true): void
 {
     if (empty($messages)) return;
@@ -64,15 +78,16 @@ function acym_display($messages, string $type = 'success', bool $close = true): 
     $remindme = json_decode($config->get('remindme', '[]'), true);
     foreach ($messages as $id => $message) {
         if (strpos($message, 'acym__do__not__remindme') !== false) {
-            preg_match('/title="(.*)"/Ui', $message, $matches);
-            if (in_array($matches[1], $remindme)) continue;
+            if (preg_match('/title="(.*)"/Ui', $message, $matches) && in_array($matches[1], $remindme)) {
+                continue;
+            }
         }
 
-        echo '<div class="acym__message grid-x acym__message__'.$type.'">';
+        echo '<div class="acym__message grid-x acym__message__'.acym_escape($type).'">';
 
         if (is_array($message)) $message = implode('</div><div>', $message);
 
-        echo '<div class="cell auto"><div>'.$message.'</div></div>';
+        echo '<div class="cell auto"><div>'.acym_escapeHtmlWithAllowedTags($message, SecurityHelper::ALLOWED_HTML_MESSAGE).'</div></div>';
 
         if ($close && strpos($message, 'acym__do__not__remindme') === false) {
             echo '<i data-id="'.acym_escape($id).'" class="cell shrink acym__message__close acymicon-close"></i>';
@@ -83,11 +98,14 @@ function acym_display($messages, string $type = 'success', bool $close = true): 
 
 function acym_increasePerf(): int
 {
+    // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- This is for big regex, the default value is 100 000.
     @ini_set('pcre.backtrack_limit', 1000000);
 
+    // Increase the max exec time to be able to handle long processes such as the send process
     $maxExecutionTime = (int)ini_get('max_execution_time');
 
     if (empty($maxExecutionTime) || $maxExecutionTime < 600) {
+        // phpcs:ignore Squiz.PHP.DiscouragedFunctions.Discouraged -- Needed for long processes like email sending.
         return set_time_limit(600) ? 600 : $maxExecutionTime;
     }
 
@@ -179,7 +197,7 @@ function acym_getJsonData(): array
     return empty($decodedData) ? [] : $decodedData;
 }
 
-function displayFreeTrialMessage(): void
+function acym_displayFreeTrialMessage(): void
 {
     if (!acym_isAdmin()) {
         return;

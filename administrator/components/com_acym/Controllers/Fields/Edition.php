@@ -69,7 +69,7 @@ trait Edition
         }
 
         if (!empty($fieldId)) {
-            $this->breadcrumb[acym_escape(acym_translation($field->name))] = acym_completeLink('fields&task=edit&fieldId='.$fieldId);
+            $this->breadcrumb[acym_translation($field->name)] = acym_completeLink('fields&task=edit&fieldId='.$fieldId);
         } else {
             $this->breadcrumb[acym_translation('ACYM_NEW_CUSTOM_FIELD')] = acym_completeLink('fields&task=edit');
         }
@@ -111,7 +111,7 @@ trait Edition
     public function ajaxGetTables(): void
     {
         $database = acym_getVar('string', 'database');
-        $allTables = acym_loadResultArray('SHOW TABLES FROM `'.$database.'`');
+        $allTables = acym_loadResultArray('SHOW TABLES FROM `'.acym_secureDBColumn($database).'`');
 
         acym_sendAjaxResponse('', ['tables' => $allTables]);
     }
@@ -121,7 +121,7 @@ trait Edition
         $table = acym_getVar('string', 'table');
         $database = acym_getVar('string', 'database');
 
-        $columns = acym_loadResultArray('SHOW COLUMNS FROM `'.$table.'` FROM `'.$database.'`');
+        $columns = acym_loadResultArray('SHOW COLUMNS FROM `'.acym_secureDBColumn($table).'` FROM `'.acym_secureDBColumn($database).'`');
         array_unshift($columns, 'ACYM_CHOOSE_COLUMN');
 
         acym_sendAjaxResponse('', ['columns' => $columns]);
@@ -141,6 +141,8 @@ trait Edition
 
     protected function saveField(): void
     {
+        acym_checkToken();
+
         $fieldClass = new FieldClass();
         $newField = $this->setFieldToSave();
         $fieldId = empty($newField->name) ? null : $fieldClass->save($newField);
@@ -193,7 +195,14 @@ trait Edition
             }
         }
 
-        $field['name'] = strip_tags($field['name'], '<i><b><strong>');
+        $field['name'] = acym_escapeHtmlWithAllowedTags(
+            $field['name'],
+            [
+                'i' => [],
+                'b' => [],
+                'strong' => [],
+            ]
+        );
         $field['namekey'] = empty($field['namekey']) ? $fieldClass->generateNamekey($field['name']) : $field['namekey'];
         $field['option']['format'] = $field['type'] === 'date' && empty($field['option']['format']) ? '%d%m%y' : strtolower($field['option']['format']);
         $field['option']['rows'] = ($field['type'] == 'textarea' && empty($field['option']['rows'])) ? '5' : $field['option']['rows'];

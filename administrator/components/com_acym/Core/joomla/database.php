@@ -88,6 +88,7 @@ function acym_getEscaped(string $text, bool $extra = false)
 
 function acym_getDBError()
 {
+    // Joomla decided to remove the getErrorMsg function in J4 and only use PHP exceptions
     if (ACYM_J40) {
         return '';
     }
@@ -130,6 +131,11 @@ function acym_getTableList(): array
     return $acydb->getTableList();
 }
 
+/**
+ * @param mixed $default
+ *
+ * @return mixed
+ */
 function acym_getCMSConfig(string $varname, $default = null)
 {
     if (ACYM_J30 && !ACYM_J40) {

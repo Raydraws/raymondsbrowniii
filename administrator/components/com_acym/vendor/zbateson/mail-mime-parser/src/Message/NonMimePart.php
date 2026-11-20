@@ -1,40 +1,84 @@
 <?php
+/**
+ * This file is part of the ZBateson\MailMimeParser project.
+ *
+ * @license http://opensource.org/licenses/bsd-license.php BSD
+ */
 
 namespace ZBateson\MailMimeParser\Message;
 
+/**
+ * Represents part of a non-mime message.
+ *
+ * @author Zaahid Bateson
+ */
 abstract class NonMimePart extends MessagePart
 {
-    public function isTextPart() : bool
+    /**
+     * Returns true.
+     *
+     */
+    public function isTextPart(): bool
     {
         return true;
     }
 
-    public function getContentType(string $default = 'text/plain') : ?string
+    /**
+     * Returns text/plain
+     *
+     * @return string
+     */
+    public function getContentType(string $default = 'text/plain'): ?string
     {
         return $default;
     }
 
-    public function getCharset() : ?string
+    /**
+     * Returns ISO-8859-1
+     *
+     * @return string
+     */
+    public function getCharset(): ?string
     {
         return 'ISO-8859-1';
     }
 
-    public function getContentDisposition(?string $default = 'inline') : ?string
+    /**
+     * Returns 'inline'.
+     *
+     * @return string
+     */
+    public function getContentDisposition(?string $default = 'inline'): ?string
     {
         return 'inline';
     }
 
-    public function getContentTransferEncoding(?string $default = '7bit') : ?string
+    /**
+     * Returns '7bit'.
+     *
+     * @return string
+     */
+    public function getContentTransferEncoding(?string $default = '7bit'): ?string
     {
         return '7bit';
     }
 
-    public function isMime() : bool
+    /**
+     * Returns false.
+     *
+     */
+    public function isMime(): bool
     {
         return false;
     }
 
-    public function getContentId() : ?string
+    /**
+     * Returns the Content ID of the part.
+     *
+     * NonMimeParts do not have a Content ID, and so this simply returns null.
+     *
+     */
+    public function getContentId(): ?string
     {
         return null;
     }

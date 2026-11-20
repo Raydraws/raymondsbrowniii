@@ -10,9 +10,11 @@ class DynamicsController extends AcymController
 {
     public function replaceDummy(): void
     {
+        acym_checkToken();
+
         $mailId = acym_getVar('int', 'mailId', 0);
         $code = acym_getVar('string', 'code', '', '', ACYM_ALLOWRAW);
-        $previewBody = acym_getVar('string', 'previewBody', '', '', ACYM_ALLOWRAW);
+        $previewBody = base64_decode(acym_getVar('string', 'previewBody', '', '', ACYM_ALLOWRAW));
 
         $pluginHelper = new PluginHelper();
         $email = $pluginHelper->createDummyEmailObject($mailId, $code, $previewBody);
@@ -48,6 +50,8 @@ class DynamicsController extends AcymController
 
     public function trigger(): void
     {
+        acym_checkToken();
+
         $plugin = acym_getVar('cmd', 'plugin', '');
         $trigger = acym_getVar('cmd', 'trigger', '');
         if (empty($plugin) || empty($trigger)) exit;
@@ -77,7 +81,7 @@ class DynamicsController extends AcymController
             $rawDefaultValues = $this->config->get('dcontent_default_'.$plugin);
 
             if (!empty($rawDefaultValues)) {
-                $defaultValues = json_decode($rawDefaultValues, true);
+                $defaultValues = is_string($rawDefaultValues) ? json_decode($rawDefaultValues, true) : $rawDefaultValues;
                 unset($defaultValues['id']);
                 unset($defaultValues['from']);
                 unset($defaultValues['to']);

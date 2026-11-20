@@ -1,15 +1,82 @@
 <?php
 
+/*
+ * This file is part of the Symfony package.
+ *
+ * (c) Fabien Potencier <fabien@symfony.com>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
 
 namespace Symfony\Polyfill\Mbstring;
 
+/**
+ * Partial mbstring implementation in PHP, iconv based, UTF-8 centric.
+ *
+ * Implemented:
+ * - mb_chr                  - Returns a specific character from its Unicode code point
+ * - mb_convert_encoding     - Convert character encoding
+ * - mb_convert_variables    - Convert character code in variable(s)
+ * - mb_decode_mimeheader    - Decode string in MIME header field
+ * - mb_encode_mimeheader    - Encode string for MIME header XXX NATIVE IMPLEMENTATION IS REALLY BUGGED
+ * - mb_decode_numericentity - Decode HTML numeric string reference to character
+ * - mb_encode_numericentity - Encode character to HTML numeric string reference
+ * - mb_convert_case         - Perform case folding on a string
+ * - mb_detect_encoding      - Detect character encoding
+ * - mb_get_info             - Get internal settings of mbstring
+ * - mb_http_input           - Detect HTTP input character encoding
+ * - mb_http_output          - Set/Get HTTP output character encoding
+ * - mb_internal_encoding    - Set/Get internal character encoding
+ * - mb_list_encodings       - Returns an array of all supported encodings
+ * - mb_ord                  - Returns the Unicode code point of a character
+ * - mb_output_handler       - Callback function converts character encoding in output buffer
+ * - mb_scrub                - Replaces ill-formed byte sequences with substitute characters
+ * - mb_strlen               - Get string length
+ * - mb_strpos               - Find position of first occurrence of string in a string
+ * - mb_strrpos              - Find position of last occurrence of a string in a string
+ * - mb_str_split            - Convert a string to an array
+ * - mb_strtolower           - Make a string lowercase
+ * - mb_strtoupper           - Make a string uppercase
+ * - mb_substitute_character - Set/Get substitution character
+ * - mb_substr               - Get part of string
+ * - mb_stripos              - Finds position of first occurrence of a string within another, case insensitive
+ * - mb_stristr              - Finds first occurrence of a string within another, case insensitive
+ * - mb_strrchr              - Finds the last occurrence of a character in a string within another
+ * - mb_strrichr             - Finds the last occurrence of a character in a string within another, case insensitive
+ * - mb_strripos             - Finds position of last occurrence of a string within another, case insensitive
+ * - mb_strstr               - Finds first occurrence of a string within another
+ * - mb_strwidth             - Return width of string
+ * - mb_substr_count         - Count the number of substring occurrences
+ * - mb_ucfirst              - Make a string's first character uppercase
+ * - mb_lcfirst              - Make a string's first character lowercase
+ * - mb_trim                 - Strip whitespace (or other characters) from the beginning and end of a string
+ * - mb_ltrim                - Strip whitespace (or other characters) from the beginning of a string
+ * - mb_rtrim                - Strip whitespace (or other characters) from the end of a string
+ *
+ * Not implemented:
+ * - mb_convert_kana         - Convert "kana" one from another ("zen-kaku", "han-kaku" and more)
+ * - mb_ereg_*               - Regular expression with multibyte support
+ * - mb_parse_str            - Parse GET/POST/COOKIE data and set global variable
+ * - mb_preferred_mime_name  - Get MIME charset string
+ * - mb_regex_encoding       - Returns current encoding for multibyte regex as string
+ * - mb_regex_set_options    - Set/Get the default options for mbregex functions
+ * - mb_send_mail            - Send encoded mail
+ * - mb_split                - Split multibyte string using regular expression
+ * - mb_strcut               - Get part of string
+ * - mb_strimwidth           - Get truncated string with specified width
+ *
+ * @author Nicolas Grekas <p@tchwork.com>
+ *
+ * @internal
+ */
 final class Mbstring
 {
     public const MB_CASE_FOLD = \PHP_INT_MAX;
 
     private const SIMPLE_CASE_FOLD = [
         ['µ', 'ſ', "\xCD\x85", 'ς', "\xCF\x90", "\xCF\x91", "\xCF\x95", "\xCF\x96", "\xCF\xB0", "\xCF\xB1", "\xCF\xB5", "\xE1\xBA\x9B", "\xE1\xBE\xBE"],
-        ['μ', 's', 'ι',        'σ', 'β',        'θ',        'φ',        'π',        'κ',        'ρ',        'ε',        "\xE1\xB9\xA1", 'ι'],
+        ['μ', 's', 'ι', 'σ', 'β', 'θ', 'φ', 'π', 'κ', 'ρ', 'ε', "\xE1\xB9\xA1", 'ι'],
     ];
 
     private static $encodingList = ['ASCII', 'UTF-8'];
@@ -103,7 +170,7 @@ final class Mbstring
             return '';  // Instead of null (cf. mb_encode_numericentity).
         }
 
-        $s = (string) $s;
+        $s = (string)$s;
         if ('' === $s) {
             return '';
         }
@@ -122,12 +189,13 @@ final class Mbstring
         $cnt = floor(\count($convmap) / 4) * 4;
 
         for ($i = 0; $i < $cnt; $i += 4) {
+            // collector_decode_htmlnumericentity ignores $convmap[$i + 3]
             $convmap[$i] += $convmap[$i + 2];
             $convmap[$i + 1] += $convmap[$i + 2];
         }
 
         $s = preg_replace_callback('/&#(?:0*([0-9]+)|x0*([0-9a-fA-F]+))(?!&);?/', function (array $m) use ($cnt, $convmap) {
-            $c = isset($m[2]) ? (int) hexdec($m[2]) : $m[1];
+            $c = isset($m[2]) ? (int)hexdec($m[2]) : $m[1];
             for ($i = 0; $i < $cnt; $i += 4) {
                 if ($c >= $convmap[$i] && $c <= $convmap[$i + 1]) {
                     return self::mb_chr($c - $convmap[$i + 2]);
@@ -168,7 +236,7 @@ final class Mbstring
             return null;
         }
 
-        $s = (string) $s;
+        $s = (string)$s;
         if ('' === $s) {
             return '';
         }
@@ -216,7 +284,7 @@ final class Mbstring
 
     public static function mb_convert_case($s, $mode, $encoding = null)
     {
-        $s = (string) $s;
+        $s = (string)$s;
         if ('' === $s) {
             return '';
         }
@@ -432,6 +500,7 @@ final class Mbstring
                     if (strncmp($enc, 'ISO-8859-', 9)) {
                         return false;
                     }
+                // no break
                 case 'ASCII':
                 case 'UTF8':
                 case 'UTF-8':
@@ -460,7 +529,7 @@ final class Mbstring
             return strpos($haystack, $needle, $offset);
         }
 
-        $needle = (string) $needle;
+        $needle = (string)$needle;
         if ('' === $needle) {
             if (80000 > \PHP_VERSION_ID) {
                 trigger_error(__METHOD__.': Empty delimiter', \E_USER_WARNING);
@@ -481,9 +550,9 @@ final class Mbstring
             return strrpos($haystack, $needle, $offset);
         }
 
-        if ($offset != (int) $offset) {
+        if ($offset != (int)$offset) {
             $offset = 0;
-        } elseif ($offset = (int) $offset) {
+        } elseif ($offset = (int)$offset) {
             if ($offset < 0) {
                 if (0 > $offset += self::mb_strlen($needle)) {
                     $haystack = self::mb_substr($haystack, 0, $offset, $encoding);
@@ -509,7 +578,7 @@ final class Mbstring
             return null;
         }
 
-        if (1 > $split_length = (int) $split_length) {
+        if (1 > $split_length = (int)$split_length) {
             if (80000 > \PHP_VERSION_ID) {
                 trigger_error('The length of each segment must be greater than zero', \E_USER_WARNING);
 
@@ -576,7 +645,7 @@ final class Mbstring
     {
         $encoding = self::getEncoding($encoding);
         if ('CP850' === $encoding || 'ASCII' === $encoding) {
-            return (string) substr($s, $start, null === $length ? 2147483647 : $length);
+            return (string)substr($s, $start, null === $length ? 2147483647 : $length);
         }
 
         if ($start < 0) {
@@ -595,7 +664,7 @@ final class Mbstring
             }
         }
 
-        return (string) iconv_substr($s, $start, $length, $encoding);
+        return (string)iconv_substr($s, $start, $length, $encoding);
     }
 
     public static function mb_stripos($haystack, $needle, $offset = 0, $encoding = null)
@@ -707,7 +776,13 @@ final class Mbstring
             $s = iconv($encoding, 'UTF-8//IGNORE', $s);
         }
 
-        $s = preg_replace('/[\x{1100}-\x{115F}\x{2329}\x{232A}\x{2E80}-\x{303E}\x{3040}-\x{A4CF}\x{AC00}-\x{D7A3}\x{F900}-\x{FAFF}\x{FE10}-\x{FE19}\x{FE30}-\x{FE6F}\x{FF00}-\x{FF60}\x{FFE0}-\x{FFE6}\x{20000}-\x{2FFFD}\x{30000}-\x{3FFFD}]/u', '', $s, -1, $wide);
+        $s = preg_replace(
+            '/[\x{1100}-\x{115F}\x{2329}\x{232A}\x{2E80}-\x{303E}\x{3040}-\x{A4CF}\x{AC00}-\x{D7A3}\x{F900}-\x{FAFF}\x{FE10}-\x{FE19}\x{FE30}-\x{FE6F}\x{FF00}-\x{FF60}\x{FFE0}-\x{FFE6}\x{20000}-\x{2FFFD}\x{30000}-\x{3FFFD}]/u',
+            '',
+            $s,
+            -1,
+            $wide
+        );
 
         return ($wide << 1) + iconv_strlen($s, 'UTF-8');
     }
@@ -796,7 +871,12 @@ final class Mbstring
                 $leftPaddingLength = floor($paddingRequired / 2);
                 $rightPaddingLength = $paddingRequired - $leftPaddingLength;
 
-                return self::mb_substr(str_repeat($pad_string, $leftPaddingLength), 0, $leftPaddingLength, $encoding).$string.self::mb_substr(str_repeat($pad_string, $rightPaddingLength), 0, $rightPaddingLength, $encoding);
+                return self::mb_substr(str_repeat($pad_string, $leftPaddingLength), 0, $leftPaddingLength, $encoding).$string.self::mb_substr(
+                        str_repeat($pad_string, $rightPaddingLength),
+                        0,
+                        $rightPaddingLength,
+                        $encoding
+                    );
         }
     }
 
@@ -968,6 +1048,7 @@ final class Mbstring
             throw new \ValueError(sprintf($errorFormat, $encoding));
         }
 
+        // BC for PHP 7.3 and lower
         if (!$validEncoding) {
             throw new \ValueError(sprintf($errorFormat, $encoding));
         }

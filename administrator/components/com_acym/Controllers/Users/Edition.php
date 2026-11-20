@@ -45,7 +45,7 @@ trait Edition
             $data['user-information']->tracking = 1;
             $data['user-information']->language = '';
 
-            $this->breadcrumb[acym_escape(acym_translation('ACYM_NEW_SUBSCRIBER'))] = acym_completeLink('users&task=edit');
+            $this->breadcrumb[acym_translation('ACYM_NEW_SUBSCRIBER')] = acym_completeLink('users&task=edit');
         } else {
             $userClass = new UserClass();
             $data['user-information'] = $userClass->getOneById($userId);
@@ -57,11 +57,11 @@ trait Edition
                 return false;
             }
 
-            $this->breadcrumb[acym_escape($data['user-information']->email)] = acym_completeLink('users&task=edit&userId='.$userId);
+            $this->breadcrumb[$data['user-information']->email] = acym_completeLink('users&task=edit&userId='.$userId);
         }
 
         if (empty($data['user-information']->language)) {
-            $data['user-information']->language = acym_getLanguageTag();
+            $data['user-information']->language = acym_getDefaultUserLanguage();
         }
 
         return true;
@@ -69,18 +69,19 @@ trait Edition
 
     private function prepareEntitySelectEdit(array &$data, int $userId): void
     {
-        if (empty($userId)) return;
+        if (empty($userId)) {
+            return;
+        }
 
         $entityHelper = new EntitySelectHelper();
 
-        $columnsToDisplay = $entityHelper->getColumnsForList('userlist.list_id');
-
-        $data['entityselect'] = acym_modal(
-            acym_translation('ACYM_MANAGE_SUBSCRIPTION'),
-            $entityHelper->entitySelect('list', ['join' => 'join_user-'.$userId], $columnsToDisplay, ['text' => acym_translation('ACYM_CONFIRM'), 'action' => 'apply']),
-            null,
-            [],
-            ['class' => 'cell medium-6 large-shrink button button-secondary']
+        $data['entityselectContent'] = $entityHelper->entitySelect(
+            [
+                'entity' => 'list',
+                'entityParams' => ['join' => 'join_user-'.$userId],
+                'columnsToDisplay' => $entityHelper->getColumnsForList('userlist.list_id'),
+                'buttonSubmit' => ['text' => acym_translation('ACYM_CONFIRM'), 'action' => 'apply'],
+            ]
         );
     }
 
@@ -132,8 +133,10 @@ trait Edition
     {
         $data['percentageOpen'] = 0;
         $data['percentageClick'] = 0;
+        $data['anonymousStats'] = !empty($this->config->get('anonymous_stats', 0));
 
-        if (empty($userId)) return;
+        // Individual open/click rates are an individual statistic: don't compute them when anonymizing
+        if (empty($userId) || $data['anonymousStats']) return;
 
         $userStatClass = new UserStatClass();
         $userStatFromDB = $userStatClass->getAllUserStatByUserId($userId);
@@ -186,72 +189,14 @@ trait Edition
 
     private function prepareHistoryEdit(array &$data, int $userId): void
     {
-        if (empty($userId)) return;
+        if (empty($userId)) {
+            return;
+        }
 
         $historyClass = new HistoryClass();
         $data['userHistory'] = $historyClass->getHistoryOfOneById($userId);
         $data['unsubReasons'] = $historyClass->getAllMainLanguageUnsubReasons();
-        foreach ($data['userHistory'] as &$oneHistory) {
-            if (!empty($oneHistory->data)) {
-                $historyData = explode("\n", $oneHistory->data);
-                $details = '<div><h5>'.acym_translation('ACYM_DETAILS').'</h5><br />';
-                if (!empty($oneHistory->mail_id)) {
-                    $details .= '<b>'.acym_translation('NEWSLETTER').' : </b>';
-                    $details .= acym_escape($oneHistory->subject).' ( '.acym_translation('ACYM_ID').' : '.$oneHistory->mail_id.' )<br />';
-                }
-
-                foreach ($historyData as $value) {
-                    if (!strpos($value, '::')) {
-                        $details .= $value.'<br />';
-                        continue;
-                    }
-                    [$part1, $part2] = explode('::', $value);
-                    if (preg_match('#^[A-Z_]*$#', $part2)) $part2 = acym_translation($part2);
-                    $details .= '<b>'.acym_escape(acym_translation($part1)).' : </b>'.acym_escape($part2).'<br />';
-                }
-
-                if ($oneHistory->action === 'unsubscribed') {
-                    $details .= acym_translation('ACYM_UNSUBSCRIBE_REASON');
-                    if (empty(acym_escape($oneHistory->unsubscribe_reason))) {
-                        $details .= ' '.acym_translation('ACYM_NO_REASON_SET_BY_USER');
-                    } else {
-                        $reason = $historyClass->getUnsubscribeReasonText($oneHistory->unsubscribe_reason);
-                        $details .= ' '.acym_escape($reason);
-                    }
-                }
-
-                $details .= '</div>';
-
-                $oneHistory->data = acym_modal(
-                    acym_translation('ACYM_VIEW_DETAILS'),
-                    $details,
-                    null,
-                    ['style' => 'word-break: break-word;'],
-                    ['class' => 'history_details'],
-                    true,
-                    false
-                );
-            }
-
-            if (!empty($oneHistory->source)) {
-                $source = explode("\n", $oneHistory->source);
-                $details = '<div><h5>'.acym_translation('ACYM_SOURCE').'</h5><br />';
-                foreach ($source as $value) {
-                    if (!strpos($value, '::')) continue;
-                    [$part1, $part2] = explode('::', $value);
-                    $details .= '<b>'.acym_escape($part1).' : </b>'.acym_escape($part2).'<br />';
-                }
-                $details .= '</div>';
-
-                $oneHistory->source = acym_modal(
-                    acym_translation('ACYM_VIEW_SOURCE'),
-                    $details,
-                    null,
-                    ['style' => 'word-break: break-word;'],
-                    ['class' => 'history_details']
-                );
-            }
-        }
+        $data['historyClass'] = $historyClass;
     }
 
     protected function prepareFieldsEdit(array &$data, string $fieldVisibility = 'backend_edition'): void
@@ -268,6 +213,8 @@ trait Edition
             $one->value = empty($one->value) ? '' : json_decode($one->value);
             $fieldDB = empty($one->option->fieldDB) ? '' : json_decode($one->option->fieldDB);
 
+            // Keep this code, search for data-display-optional for more info
+            //$displayIf = empty($one->option->display) ? '' : 'data-display-optional="'.acym_escape($one->option->display).'"';
 
             $valuesArray = [];
             if (!empty($one->value)) {
@@ -279,6 +226,7 @@ trait Edition
                     $valuesArray[$value->value] = $valueTmp;
                 }
             }
+
             if (!empty($fieldDB) && !empty($fieldDB->value)) {
                 $fromDB = $fieldClass->getValueFromDB($fieldDB);
                 foreach ($fromDB as $value) {
@@ -287,13 +235,13 @@ trait Edition
             }
 
             $one->display = empty($one->option->display) ? '' : json_decode($one->option->display);
-            $data['allFields'][$one->id] = $one;
+
             if ($one->id == 1) {
                 $defaultValue = empty($data['user-information']->id) ? '' : $data['user-information']->name;
             } elseif ($one->id == 2) {
                 $defaultValue = empty($data['user-information']->id) ? '' : $data['user-information']->email;
             } elseif ($one->id == $languageFieldId) {
-                $defaultValue = empty($data['user-information']->id) ? acym_getLanguageTag() : $data['user-information']->language;
+                $defaultValue = empty($data['user-information']->id) ? acym_getDefaultUserLanguage() : $data['user-information']->language;
             } elseif (
                 isset($data['fieldsValues'][$one->id])
                 && (
@@ -311,20 +259,18 @@ trait Edition
                 )
             ) {
                 $decoded = json_decode($data['fieldsValues'][$one->id]);
-                $defaultValue = is_null($decoded) ? $data['fieldsValues'][$one->id] : $decoded;
+                $defaultValue = is_array($decoded) ? $decoded : $data['fieldsValues'][$one->id];
             } else {
                 $defaultValue = $one->default_value;
             }
 
-            $data['allFields'][$one->id]->html = $fieldClass->displayField(
-                $one,
-                $defaultValue,
-                $valuesArray,
-                true,
-                !acym_isAdmin(),
-                null,
-                $one->$fieldVisibility != 0
-            );
+            $data['allFields'][$one->id] = [
+                'field' => $one,
+                'defaultValue' => $defaultValue,
+                'values' => $valuesArray,
+                'user' => $data['user-information'],
+                'showField' => $one->$fieldVisibility != 0,
+            ];
         }
     }
 
@@ -335,6 +281,8 @@ trait Edition
 
     public function apply(bool $listing = false): void
     {
+        acym_checkToken();
+
         $userInformation = acym_getVar('array', 'user');
 
         $user = new \stdClass();

@@ -4,6 +4,7 @@ namespace AcyMailing\Helpers\Update;
 
 use AcyMailing\Classes\CampaignClass;
 use AcyMailing\Classes\ConfigurationClass;
+use AcyMailing\Controllers\ConfigurationController;
 use AcyMailing\Helpers\BounceHelper;
 
 trait Patchv10
@@ -25,7 +26,8 @@ trait Patchv10
 	`trigger_once` TINYINT(1) NOT NULL DEFAULT 0,
 	PRIMARY KEY (`id`)
 )
-	ENGINE = InnoDB;';
+	ENGINE = InnoDB
+	/*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci*/;';
 
         $scenarioStepTable = 'CREATE TABLE IF NOT EXISTS `#__acym_scenario_step` (
 	`id` VARCHAR(30) NOT NULL,
@@ -41,7 +43,8 @@ trait Patchv10
     			ON DELETE NO ACTION
     			ON UPDATE NO ACTION
 )
-	ENGINE = InnoDB;';
+	ENGINE = InnoDB
+	/*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci*/;';
 
         $scenarioProcessTable = 'CREATE TABLE IF NOT EXISTS `#__acym_scenario_process` (
 	`id` INT NOT NULL AUTO_INCREMENT,
@@ -61,7 +64,8 @@ trait Patchv10
     			ON DELETE NO ACTION
     			ON UPDATE NO ACTION
 )
-	ENGINE = InnoDB;';
+	ENGINE = InnoDB
+	/*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci*/;';
 
         $scenarioQueueTable = 'CREATE TABLE IF NOT EXISTS `#__acym_scenario_queue` (
 	`id` INT NOT NULL AUTO_INCREMENT,
@@ -75,7 +79,8 @@ trait Patchv10
     			ON DELETE NO ACTION
     			ON UPDATE NO ACTION
 )
-	ENGINE = InnoDB;';
+	ENGINE = InnoDB
+	/*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci*/;';
 
         $scenarioHistoryLineTable = 'CREATE TABLE IF NOT EXISTS `#__acym_scenario_history_line` (
 	`id` INT NOT NULL AUTO_INCREMENT,
@@ -93,7 +98,8 @@ trait Patchv10
     			ON DELETE NO ACTION
     			ON UPDATE NO ACTION
 )
-	ENGINE = InnoDB;';
+	ENGINE = InnoDB
+	/*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci*/;';
 
         $this->updateQuery($scenarioTable);
         $this->updateQuery($scenarioStepTable);
@@ -240,5 +246,82 @@ trait Patchv10
 
         $this->updateQuery('ALTER TABLE #__acym_automation ADD COLUMN  `ordering` SMALLINT(6) NOT NULL DEFAULT 0');
         $this->updateQuery('ALTER TABLE #__acym_scenario ADD COLUMN  `ordering` SMALLINT(6) NOT NULL DEFAULT 0');
+    }
+
+    private function updateFor1082(): void
+    {
+        if ($this->isPreviousVersionAtLeast('10.8.2')) {
+            return;
+        }
+
+        global $acymCmsUserVars;
+
+        $this->updateQuery(
+            'UPDATE `#__acym_user` AS `acyuser` 
+            JOIN '.$acymCmsUserVars->table.' AS `user` 
+                ON CONVERT(`user`.'.$acymCmsUserVars->email.' USING utf8mb4) COLLATE utf8mb4_unicode_ci = CONVERT(`acyuser`.`email` USING utf8mb4) COLLATE utf8mb4_unicode_ci
+            SET `acyuser`.`cms_id` = `user`.'.$acymCmsUserVars->id.'
+            WHERE `acyuser`.`cms_id` > 0 
+                AND `acyuser`.`cms_id` != `user`.'.$acymCmsUserVars->id
+        );
+
+        $this->updateQuery(
+            'UPDATE `#__acym_user` AS `acyuser` 
+            LEFT JOIN '.$acymCmsUserVars->table.' AS `user` 
+                ON CONVERT(`user`.'.$acymCmsUserVars->email.' USING utf8mb4) COLLATE utf8mb4_unicode_ci = CONVERT(`acyuser`.`email` USING utf8mb4) COLLATE utf8mb4_unicode_ci
+            SET `acyuser`.`cms_id` = 0
+            WHERE `acyuser`.`cms_id` > 0 
+                AND `user`.'.$acymCmsUserVars->id.' IS NULL'
+        );
+    }
+
+    private function updateFor1090(ConfigurationClass $config): void
+    {
+        if ($this->isPreviousVersionAtLeast('10.9.0')) {
+            return;
+        }
+
+        $frequency = (int)$config->get('cron_frequency');
+
+        if (
+            acym_level(ACYM_ESSENTIAL)
+            && $config->get('queue_type') !== 'manual'
+            && !empty($frequency)
+            && $frequency < 900
+            && acym_isLicenseValidWeekly()
+        ) {
+            $taskId = acym_scheduleTask(
+                [
+                    'title' => 'AcyMailing – Automated tasks',
+                    'type' => 'plg_task_requests_task_get',
+                    'frequencyInMinutes' => $frequency / 60,
+                    'name' => ConfigurationController::CRON_TASK_NAME,
+                    'taskFrequency' => 'every_minute',
+                    'config' => [
+                        'cron_security' => $config->get('cron_security'),
+                        'cron_key' => $config->get('cron_key'),
+                    ],
+                ]
+            );
+
+            if (!empty($taskId) && ACYM_CMS === 'joomla') {
+                $config->saveConfig(['scheduled_task_id' => $taskId]);
+            }
+        }
+
+        $this->updateQuery('ALTER TABLE `#__acym_user` ADD COLUMN `deactivation_date` DATETIME DEFAULT NULL');
+
+        $aclPages = acym_getPagesForAcl();
+
+        $configToSave = [];
+        foreach ($aclPages as $page => $title) {
+            if ($config->get('acl_'.$page) === 'all') {
+                $configToSave['acl_'.$page] = ACYM_ADMIN_GROUP;
+            }
+        }
+
+        if (!empty($configToSave)) {
+            $config->saveConfig($configToSave);
+        }
     }
 }

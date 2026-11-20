@@ -1,6 +1,6 @@
 <?php
 
-declare(strict_types=1);
+declare(strict_types = 1);
 
 namespace GuzzleHttp\Psr7;
 
@@ -17,14 +17,20 @@ use Psr\Http\Message\UploadedFileInterface;
 use Psr\Http\Message\UriFactoryInterface;
 use Psr\Http\Message\UriInterface;
 
+/**
+ * Implements all of the PSR-17 interfaces.
+ *
+ * Note: in consuming code it is recommended to require the implemented interfaces
+ * and inject the instance of this class multiple times.
+ */
 final class HttpFactory implements RequestFactoryInterface, ResponseFactoryInterface, ServerRequestFactoryInterface, StreamFactoryInterface, UploadedFileFactoryInterface, UriFactoryInterface
 {
     public function createUploadedFile(
         StreamInterface $stream,
-        ?int $size = null,
-        int $error = \UPLOAD_ERR_OK,
-        ?string $clientFilename = null,
-        ?string $clientMediaType = null
+        ?int            $size = null,
+        int             $error = \UPLOAD_ERR_OK,
+        ?string         $clientFilename = null,
+        ?string         $clientMediaType = null
     ): UploadedFileInterface {
         if ($size === null) {
             $size = $stream->getSize();

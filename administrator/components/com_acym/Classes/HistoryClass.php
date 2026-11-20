@@ -13,6 +13,10 @@ class HistoryClass extends AcymClass
         $this->table = 'history';
     }
 
+    /**
+     * Function insert to insert a line into the history...
+     * User modification, user update, bounces... etc.
+     */
     public function insert(int $userId, string $action, array $data = [], int $mailid = 0, $unsubscribe_reason = null): void
     {
         $currentUserid = acym_currentUserId();
@@ -21,9 +25,10 @@ class HistoryClass extends AcymClass
         }
         $history = new \stdClass();
         $history->user_id = intval($userId);
-        $history->action = strip_tags($action);
+        $history->action = acym_stripTags($action);
         $history->data = implode("\n", $data);
         $history->unsubscribe_reason = $unsubscribe_reason;
+        //Avoid a memory issue when the data is way too big.
         if (strlen($history->data) > 100000) {
             $history->data = substr($history->data, 0, 10000);
         }
@@ -43,13 +48,22 @@ class HistoryClass extends AcymClass
         $history->mail_id = $mailid;
         $history->ip = acym_getIP();
 
-        if (!empty($_SERVER)) {
+        if (!empty($_SERVER) && empty($this->config->get('anonymous_stats', 0))) {
             $source = [];
-            $vars = ['HTTP_REFERER', 'HTTP_USER_AGENT', 'HTTP_HOST', 'SERVER_ADDR', 'REMOTE_ADDR', 'REQUEST_URI', 'QUERY_STRING'];
+            $vars = [
+                'HTTP_REFERER',
+                'HTTP_USER_AGENT',
+                'HTTP_HOST',
+                'SERVER_ADDR',
+                'REMOTE_ADDR',
+                'REQUEST_URI',
+                'QUERY_STRING',
+            ];
 
             foreach ($vars as $oneVar) {
-                if (!empty($_SERVER[$oneVar])) {
-                    $source[] = $oneVar.'::'.strip_tags($_SERVER[$oneVar]);
+                $remoteIp = acym_getVar('string', $oneVar, '', 'SERVER');
+                if (!empty($remoteIp)) {
+                    $source[] = $oneVar.'::'.acym_stripTags($remoteIp);
                 }
             }
             $history->source = implode("\n", $source);
@@ -68,14 +82,17 @@ class HistoryClass extends AcymClass
         return !empty($result);
     }
 
-    public function getHistoryOfOneById(int $id): array
+    /**
+     * Get all history lines for one user order by date descending
+     */
+    public function getHistoryOfOneById(int $userId): array
     {
-        $query = 'SELECT h.*, m.id, m.subject FROM #__acym_'.$this->table.' AS h ';
-        $query .= 'LEFT JOIN #__acym_mail AS m ON h.mail_id = m.id ';
-        $query .= 'WHERE h.user_id = '.intval($id);
-        $query .= ' ORDER BY h.date DESC';
-
-        return acym_loadObjectList($query);
+        return acym_loadObjectList(
+            'SELECT h.*, m.id, m.subject FROM #__acym_history AS h 
+	        LEFT JOIN #__acym_mail AS m ON h.mail_id = m.id 
+            WHERE h.user_id = '.intval($userId).' 
+            ORDER BY h.date DESC'
+        );
     }
 
     public function getAllUnsubReasons(): array
