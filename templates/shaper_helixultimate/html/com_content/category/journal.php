@@ -7,6 +7,13 @@
  */
 defined('_JEXEC') or die;
 
+// From the Walk styles + script, version-stamped so browsers never use a stale cached copy
+$rsbWa = \Joomla\CMS\Factory::getApplication()->getDocument()->getWebAssetManager();
+if (!$rsbWa->assetExists('style', 'rsb.walk')) {
+    $rsbWa->registerAndUseStyle('rsb.walk', 'templates/shaper_helixultimate/css/walk.css', ['version' => '20261123a']);
+    $rsbWa->registerAndUseScript('rsb.walk', 'templates/shaper_helixultimate/js/walk.js', ['version' => '20261123a'], ['defer' => true]);
+}
+
 use Joomla\CMS\Factory;
 use Joomla\CMS\Router\Route;
 
@@ -19,23 +26,26 @@ foreach ($items as $i => $it) { if ((int) $it->featured === 1) { $featured = $it
 if (!$featured && $items) { $featured = array_shift($items); }
 
 // Chips: categories that actually have posts, in the order they appear
+// Chips: the two series. Walk entries are articles whose alias starts with "from-the-walk-"; everything else is Notes from the Studio
 $cats = [];
-foreach (array_merge($featured ? [$featured] : [], $items) as $it) { $cats[$it->category_alias] = $it->category_title; }
-unset($cats[$this->category->alias]);
+foreach (array_merge($featured ? [$featured] : [], $items) as $it) {
+    if (preg_match('/^from-the-walk-[0-9]/', $it->alias)) { $cats['from-the-walk'] = 'From the Walk'; } else { $cats['notes-from-the-studio'] = 'Notes from the Studio'; }
+}
+ksort($cats);
 
 $feed = Route::_('index.php?option=com_content&view=category&id=' . (int) $this->category->id . '&format=feed&type=rss');
 ?>
 <div class="rsb-journal">
   <header class="rsb-pagehead">
     <p class="rsb-kicker">The Journal · <a href="<?php echo $feed; ?>">RSS</a></p>
-    <h1 class="rsb-h1"><?php echo $this->escape($this->params->get('show_page_heading') ? $this->params->get('page_heading') : 'Notes from the studio'); ?></h1>
-    <p class="rsb-lead">Shows, process, the stories behind the pieces, and what I’m learning running a one-person studio.</p>
+    <h1 class="rsb-h1"><?php echo $this->escape($this->params->get('show_page_heading') ? $this->params->get('page_heading') : 'From the Mind of Ray'); ?></h1>
+    <p class="rsb-lead">Morning reflections recorded on foot, notes from the studio, and the stories behind the work.</p>
   </header>
 
   <?php if ($featured) : $this->item = $featured; $this->rsbFeatured = true; echo $this->loadTemplate('item'); $this->rsbFeatured = false; endif; ?>
 
   <?php if (count($cats) > 1) : ?>
-  <nav class="rsb-chips" aria-label="Filter posts by category" data-rsb-filter>
+  <nav class="rsb-chips" aria-label="Filter posts by series" data-rsb-filter>
     <button type="button" class="rsb-chip is-on" data-cat="" aria-pressed="true">All</button>
     <?php foreach ($cats as $alias => $title) : ?>
       <button type="button" class="rsb-chip" data-cat="<?php echo $this->escape($alias); ?>" aria-pressed="false"><?php echo $this->escape($title); ?></button>

@@ -1,0 +1,66 @@
+/* raymondsbrowniii.com: From the Walk series styles. Loaded with a version stamp by the homepage strip,
+   the Journal page and article pages, so visitors never get a stale cached copy. Bump RSB_WALK_VER in those files after edits. */
+/* ---------- From the Walk (morning-walk Journal series): brown + orange, never gold on black ---------- */
+.rsb-walk { box-sizing: border-box; padding: 18px 22px 12px; border-radius: 14px; background: #311D00; color: var(--rsb-card); display: flex; flex-direction: column; gap: 12px; }
+.rsb-walk__entry { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px 16px; color: var(--rsb-card); text-decoration: none; }
+.rsb-walk__entry:hover, .rsb-walk__entry:focus-visible { color: var(--rsb-card); }
+.rsb-walk__entry:hover .rsb-walk__text { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.rsb-walk__label { flex: none; display: inline-flex; align-items: center; gap: 6px; font-family: var(--rsb-mono); font-size: 12px; padding: 4px 8px; border-radius: 6px; background: #FF3C00; color: #1B1A17; white-space: nowrap; }
+.rsb-walk__text { flex: 1 1 420px; min-width: 0; font-size: 16px; font-weight: 600; line-height: 1.5; }
+.rsb-walk__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 14px; padding-top: 10px; border-top: 1px solid rgba(245, 242, 236, .18); }
+.rsb-walk__date { font-family: var(--rsb-mono); font-size: 12px; color: #CFC8BA; }
+.rsb-walk__nav { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.rsb-walk__btn { font: inherit; font-size: 13px; font-weight: 600; line-height: 1.2; padding: 6px 12px; border-radius: 999px; background: transparent; border: 1px solid #8C867B; color: var(--rsb-card); cursor: pointer; }
+.rsb-walk__btn:hover:not(:disabled), .rsb-walk__btn:focus-visible { border-color: var(--rsb-card); }
+.rsb-walk__btn:disabled { opacity: .4; cursor: default; }
+.rsb-walk__all, .rsb-walk__all:hover { margin-left: 6px; font-size: 13px; font-weight: 600; color: #FF3C00; text-decoration: underline; text-underline-offset: 3px; }
+/* desktop: the strip leaves the left column and spans the full row, under the hero and the Latest box */
+@media (min-width: 992px) {
+  .rsb-split-row--hero .sppb-row:has(.rsb-walk) { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 24px; align-items: start; }
+  .rsb-split-row--hero .sppb-row:has(.rsb-walk) > .sppb-row-column:first-child,
+  .rsb-split-row--hero .sppb-row:has(.rsb-walk) > .sppb-row-column:first-child > .sppb-column,
+  .rsb-split-row--hero .sppb-row:has(.rsb-walk) > .sppb-row-column:first-child > .sppb-column > .sppb-column-addons { display: contents; }
+  .rsb-split-row--hero .sppb-row:has(.rsb-walk) > .sppb-row-column:last-child { grid-column: 2; grid-row: 1; }
+  .rsb-split-row--hero .sppb-row:has(.rsb-walk) .sppb-column-addons > .sppb-addon-wrapper:first-child { grid-column: 1; grid-row: 1; }
+  .rsb-split-row--hero .sppb-row:has(.rsb-walk) .sppb-column-addons > .sppb-addon-wrapper:has(.rsb-walk) { grid-column: 1 / -1; grid-row: 2; margin-top: 4px !important; }
+}
+@media (max-width: 767px) {
+  .rsb-walk { padding: 14px 16px 12px; }
+  .rsb-walk__text { flex-basis: 100%; font-size: 15px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+  .rsb-walk__nav { width: 100%; }
+  .rsb-walk__btn { flex: 1 1 40%; min-height: 44px; font-size: 14px; }
+  .rsb-walk__all, .rsb-walk__all:hover { flex-basis: 100%; margin: 4px 0 0; padding: 8px 0; text-align: right; }
+}
+/* Morning Walk badge */
+.rsb-walkbadge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #FF3C00; color: #1B1A17; font-family: var(--rsb-mono); font-size: 12px; line-height: 1.4; }
+.rsb-post__media .rsb-walkbadge { position: absolute; top: 12px; left: 12px; }
+/* walk entry page: main image first, badge line, then the usual title and meta */
+.view-article .article-details:has(.rsb-walk-main) { display: flex; flex-direction: column; }
+.view-article .article-details:has(.rsb-walk-main) [itemprop="articleBody"] { display: contents; }
+.view-article .article-details .rsb-walk-main { order: -3; margin: 0 0 28px; }
+.view-article .article-details .rsb-walk-main img { display: block; width: 100%; height: auto; border-radius: 16px; }
+.view-article [itemprop="articleBody"] p.rsb-walk-kicker { order: -2; margin: 0 0 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-family: var(--rsb-mono); font-size: 13px; line-height: 1.4; color: var(--rsb-muted); }
+/* walk gallery: videos first (two across), photos below (three across) */
+.rsb-walk-videos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0 0 12px; }
+.rsb-walk-videos figure { margin: 0; }
+.view-article .article-details .rsb-walk-videos video { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 12px; background: #311D00; }
+.rsb-walk-videos figcaption { margin-top: 6px; font-family: var(--rsb-mono); font-size: 12px; color: var(--rsb-muted); }
+.rsb-walk-photos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 0 0 8px; }
+.rsb-walk-photos a { display: block; }
+.view-article .article-details .rsb-walk-photos img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: cover; border-radius: 12px; }
+@media (max-width: 575px) { .rsb-walk-videos { grid-template-columns: 1fr; } .rsb-walk-photos { gap: 8px; } }
+.rsb-lightbox { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 96vh; overflow: visible; }
+.rsb-lightbox::backdrop { background: rgba(27, 26, 23, .92); }
+.rsb-lightbox img { display: block; max-width: 96vw; max-height: 86vh; border-radius: 12px; }
+.rsb-lightbox button { display: block; margin: 12px auto 0; font: inherit; font-size: 14px; font-weight: 600; padding: 10px 18px; border-radius: 999px; border: 0; background: var(--rsb-card); color: var(--rsb-ink); cursor: pointer; }
+/* walk entry as the featured Journal card: show the whole graphic (no cropping) on its own brown */
+.rsb-post--featured.rsb-post--walk .rsb-post__media { background: #311D00; display: grid; align-items: center; }
+.rsb-post--featured.rsb-post--walk .rsb-post__media img { width: 100%; min-width: 0; height: auto; min-height: 0; max-height: none; object-fit: contain; }
+/* single-author site: no author line on posts (bridge-posted entries would show the API account) */
+.view-article .article-info .createdby { display: none; }
+
+/* Walk entries: visible captions under the main image and gallery photos; a lone video stays a sensible size */
+.view-article .article-details .rsb-walk-main figcaption,
+.rsb-walk-photos figcaption { margin-top: 6px; font-family: var(--rsb-mono); font-size: 12px; line-height: 1.4; color: var(--rsb-muted); }
+.rsb-walk-photos figure { margin: 0; }
+.rsb-walk-videos figure:only-child { grid-column: 1 / -1; max-width: 560px; }

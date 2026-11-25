@@ -1,0 +1,72 @@
+/* raymondsbrowniii.com homepage hero (module 139 'Home · Hero (live work)'). Bump ?v= in Helix before_body after editing. */
+.rsb-hx{container-type:inline-size;padding:40px 0 0}
+.rsb-hx__now{margin:0 0 18px;display:flex;align-items:center;gap:10px;height:24px;white-space:nowrap;overflow:hidden;font-family:var(--rsb-mono,'IBM Plex Mono',monospace);font-size:14px;color:#3A3832}
+.rsb-hx__dot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--rsb-raydraws,#C2412D);animation:rsbhxPulse 1.6s ease-in-out infinite}
+.rsb-hx__lbl{flex:none;font-weight:500;color:var(--rsb-ink,#1B1A17)}
+.rsb-hx__sep{flex:none;color:#A39C90}
+.rsb-hx__item{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rsb-hx__item.is-in{animation:rsbhxIn .45s ease both}
+.rsb-hx h1.rsb-hx__h1{margin:0;font-family:var(--rsb-display,Anton,Impact,sans-serif);font-weight:400;text-transform:uppercase;line-height:.92;display:flex;flex-wrap:wrap;column-gap:.24em;font-size:11.6cqi}
+.rsb-hx__br{flex-basis:100%;height:0}
+.rsb-hx__w{all:unset;cursor:pointer;color:#7D766B;transition:color .25s;white-space:nowrap}
+.rsb-hx__w b{font-weight:400;color:inherit}
+.rsb-hx__w.is-on{color:var(--rsb-ink,#1B1A17)}
+.rsb-hx__w:focus-visible{outline:3px solid var(--rsb-ink,#1B1A17);outline-offset:5px}
+@media (min-width:992px){.rsb-hx h1.rsb-hx__h1{font-size:calc((100cqi + 384px)*.0723)}}
+@container (max-width:719px){.rsb-hx__now{font-size:12px;gap:7px}.rsb-hx__sep{display:none}}
+.rsb-hx-strip{padding:28px 0 24px}
+.rsb-hx-strip__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.rsb-hx-strip__head p{margin:0;font-family:var(--rsb-mono,'IBM Plex Mono',monospace);font-size:13px;color:var(--rsb-muted,#5B5750)}
+.rsb-hx-strip__nav{display:flex;gap:8px}
+.rsb-hx-strip__nav button{all:unset;cursor:pointer;width:44px;height:44px;border-radius:50%;border:1.5px solid var(--rsb-ink,#1B1A17);display:flex;align-items:center;justify-content:center}
+.rsb-hx-strip__nav button:disabled{opacity:.3;cursor:default}
+.rsb-hx-strip__nav button:focus-visible{outline:3px solid var(--rsb-ink,#1B1A17);outline-offset:3px}
+.rsb-hx-strip__nav svg{width:20px;height:20px;fill:none;stroke:var(--rsb-ink,#1B1A17);stroke-width:2}
+.rsb-hx-strip__track{display:flex;gap:20px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;padding:4px 4px 6px;margin:-4px}
+.rsb-hx-strip__track::-webkit-scrollbar{display:none}
+.rsb-hx__s{position:relative;flex:0 0 calc((100% - 40px)/3);scroll-snap-align:start;display:flex;flex-direction:column;border-radius:8px;overflow:hidden;background:#F5F1EA;text-decoration:none;color:var(--rsb-ink,#1B1A17);box-shadow:0 0 0 0 transparent;transition:box-shadow .3s}
+.rsb-hx__s.is-on{box-shadow:0 0 0 3px var(--c)}
+.rsb-hx__s:hover,.rsb-hx__s:focus{color:var(--rsb-ink,#1B1A17);text-decoration:none}
+.rsb-hx__media{position:relative;aspect-ratio:4/3;background:var(--bg,#1B1A17)}
+.rsb-hx__media img{position:absolute;inset:0;width:100%;height:100%;object-fit:var(--fit,cover);object-position:var(--pos,center)}
+.rsb-hx__bar{position:absolute;z-index:2;top:0;left:0;height:4px;width:0;background:var(--c)}
+.rsb-hx__cap{padding:14px 16px 16px;display:flex;flex-direction:column;gap:3px}
+.rsb-hx__k{font-family:var(--rsb-mono,'IBM Plex Mono',monospace);font-size:12px;font-weight:500;color:var(--c)}
+.rsb-hx__t{font-family:var(--rsb-display,Anton,Impact,sans-serif);font-size:24px;line-height:1.05;text-transform:uppercase}
+.rsb-hx__m{font-size:14px;color:#5B5750}
+.rsb-hx__site{position:absolute;z-index:2;top:12px;left:12px;color:#fff;background:var(--c);font-size:12px;font-weight:600;padding:5px 9px;border-radius:3px}
+.rsb-hx__play{all:unset;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;cursor:pointer;width:72px;height:72px;border-radius:50%;background:#F5F1EA;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,.35)}
+.rsb-hx__play:focus-visible{outline:3px solid #fff;outline-offset:4px}
+.rsb-hx__play svg{width:30px;height:30px;fill:var(--rsb-raysbeats,#6B3FA0)}
+@media (max-width:767px){.rsb-hx__s{flex-basis:min(78%,320px)}.rsb-hx-strip__nav{display:none}.rsb-hx-strip{padding-top:20px}}
+.rsb-walk{display:grid!important;grid-template-columns:80px minmax(0,1fr);column-gap:22px;align-items:stretch}
+.rsb-walk::before{content:"";grid-column:1;grid-row:1/span 2;min-height:96px;background:url(/images/brand/raymondsbrowniii-face-filled.svg) no-repeat left center/contain}
+.rsb-walk>*{grid-column:2;min-width:0}
+@media (max-width:575px){.rsb-walk{grid-template-columns:56px minmax(0,1fr);column-gap:14px}.rsb-walk::before{grid-row:1;min-height:80px;background-position:left top}}
+@keyframes rsbhxPulse{0%,100%{opacity:1}50%{opacity:.25}}
+@keyframes rsbhxIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.rsb-hx__dot,.rsb-hx__item.is-in{animation:none}.rsb-hx__s,.rsb-hx__w{transition:none}.rsb-hx-strip__track{scroll-behavior:auto}}
+/* layout: From the Walk under the headline (left), Latest spans both rows (right) — overrides walk.css */
+@media (min-width:992px){
+.rsb-split-row--hero .sppb-row:has(.rsb-walk){align-items:stretch}
+.rsb-split-row--hero .sppb-row:has(.rsb-walk)>.sppb-row-column:last-child{grid-column:2;grid-row:1/span 2}
+.rsb-split-row--hero .sppb-row:has(.rsb-walk) .sppb-column-addons>.sppb-addon-wrapper:has(.rsb-walk){grid-column:1;grid-row:2;margin-top:24px!important;align-self:end}
+.rsb-split-row--hero .sppb-row>.sppb-row-column:last-child :is(.sppb-column,.sppb-column-addons,.sppb-addon-wrapper,.sppb-addon-wrapper>div,.sppb-addon,.sppb-addon-content){display:flex;flex-direction:column;flex:1 1 auto;min-height:0}
+.rsb-split-row--hero .rsb-latest{flex:1 1 auto;box-sizing:border-box}
+}
+@media (max-width:991px){.rsb-split-row--hero .rsb-walk{margin-top:24px}}
+/* Family of Companies logo row (raw HTML addon at the top of the Latest column) */
+.rsb-foc{display:flex;justify-content:space-between;align-items:center;gap:8px;width:80%;padding:40px 0 0;margin:0 auto 34px}
+.rsb-foc__a{position:relative;display:block;line-height:0;text-decoration:none}
+.rsb-foc__a img{display:block;height:35px;width:auto;transition:opacity .35s ease}
+.rsb-foc__a .rsb-foc__clr{position:absolute;left:0;top:0;opacity:0}
+.rsb-foc__name{position:absolute;left:50%;top:100%;margin-top:9px;transform:translateX(-50%);white-space:nowrap;font-size:12px;line-height:1.2;font-weight:600;color:var(--c);opacity:0;pointer-events:none;transition:opacity .3s ease}
+.rsb-foc__a:first-child .rsb-foc__name{left:0;transform:none}
+.rsb-foc__a:last-child .rsb-foc__name{left:auto;right:0;transform:none}
+.rsb-foc__a:hover .rsb-foc__clr,.rsb-foc__a:focus-visible .rsb-foc__clr,.rsb-foc__a:hover .rsb-foc__name,.rsb-foc__a:focus-visible .rsb-foc__name{opacity:1}
+.rsb-foc__a:hover .rsb-foc__ink,.rsb-foc__a:focus-visible .rsb-foc__ink{opacity:0}
+.rsb-foc__a:focus-visible{outline:2px solid var(--c);outline-offset:6px;border-radius:4px}
+.rsb-split-row--hero .rsb-latest{margin-top:0!important}
+.rsb-split-row--hero .sppb-addon-wrapper:has(.rsb-foc),.rsb-split-row--hero .sppb-addon-wrapper:has(.rsb-foc) *{flex:0 0 auto!important}
+@media (max-width:991px){.rsb-foc{width:auto;margin-left:0;margin-right:0;padding-top:28px;justify-content:flex-start;gap:28px}}
+@media (prefers-reduced-motion:reduce){.rsb-foc__a img,.rsb-foc__name{transition:none}}
