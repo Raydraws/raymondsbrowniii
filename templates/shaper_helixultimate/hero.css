@@ -14,14 +14,16 @@
 .rsb-hx__w:focus-visible{outline:3px solid var(--rsb-ink,#1B1A17);outline-offset:5px}
 @media (min-width:992px){.rsb-hx h1.rsb-hx__h1{font-size:calc((100cqi + 384px)*.0723)}}
 @container (max-width:719px){.rsb-hx__now{font-size:12px;gap:7px}.rsb-hx__sep{display:none}}
-.rsb-hx-strip{padding:28px 0 24px}
-.rsb-hx-strip__head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.rsb-hx-strip{padding:28px 0 40px;display:flex;flex-direction:column}
+.rsb-hx-strip__head{display:contents}
+.rsb-hx-strip__head p{order:0;margin-bottom:12px!important}
+.rsb-hx-strip__track{order:1}
 .rsb-hx-strip__head p{margin:0;font-family:var(--rsb-mono,'IBM Plex Mono',monospace);font-size:13px;color:var(--rsb-muted,#5B5750)}
-.rsb-hx-strip__nav{display:flex;gap:8px}
-.rsb-hx-strip__nav button{all:unset;cursor:pointer;width:44px;height:44px;border-radius:50%;border:1.5px solid var(--rsb-ink,#1B1A17);display:flex;align-items:center;justify-content:center}
+.rsb-hx-strip__nav{order:2;display:flex;justify-content:center;gap:12px;margin-top:20px}
+.rsb-hx-strip__nav button{all:unset;cursor:pointer;width:44px;height:44px;border-radius:50%;background:#311D00;display:flex;align-items:center;justify-content:center;transition:opacity .2s}
 .rsb-hx-strip__nav button:disabled{opacity:.3;cursor:default}
 .rsb-hx-strip__nav button:focus-visible{outline:3px solid var(--rsb-ink,#1B1A17);outline-offset:3px}
-.rsb-hx-strip__nav svg{width:20px;height:20px;fill:none;stroke:var(--rsb-ink,#1B1A17);stroke-width:2}
+.rsb-hx-strip__nav svg{width:20px;height:20px;fill:none;stroke:var(--rsb-ground,#E9E4DA);stroke-width:2.2}
 .rsb-hx-strip__track{display:flex;gap:20px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-behavior:smooth;scrollbar-width:none;padding:4px 4px 6px;margin:-4px}
 .rsb-hx-strip__track::-webkit-scrollbar{display:none}
 .rsb-hx__s{position:relative;flex:0 0 calc((100% - 40px)/3);scroll-snap-align:start;display:flex;flex-direction:column;border-radius:8px;overflow:hidden;background:#F5F1EA;text-decoration:none;color:var(--rsb-ink,#1B1A17);box-shadow:0 0 0 0 transparent;transition:box-shadow .3s}
@@ -38,7 +40,7 @@
 .rsb-hx__play{all:unset;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:2;cursor:pointer;width:72px;height:72px;border-radius:50%;background:#F5F1EA;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 30px rgba(0,0,0,.35)}
 .rsb-hx__play:focus-visible{outline:3px solid #fff;outline-offset:4px}
 .rsb-hx__play svg{width:30px;height:30px;fill:var(--rsb-raysbeats,#6B3FA0)}
-@media (max-width:767px){.rsb-hx__s{flex-basis:min(78%,320px)}.rsb-hx-strip__nav{display:none}.rsb-hx-strip{padding-top:20px}}
+@media (max-width:767px){.rsb-hx__s{flex-basis:min(78%,320px)}.rsb-hx-strip{padding-top:20px}}
 .rsb-walk{display:grid!important;grid-template-columns:80px minmax(0,1fr);column-gap:22px;align-items:stretch}
 .rsb-walk::before{content:"";grid-column:1;grid-row:1/span 2;min-height:96px;background:url(/images/brand/raymondsbrowniii-face-filled.svg) no-repeat left center/contain}
 .rsb-walk>*{grid-column:2;min-width:0}
@@ -68,5 +70,5 @@
 .rsb-foc__a:focus-visible{outline:2px solid var(--c);outline-offset:6px;border-radius:4px}
 .rsb-split-row--hero .rsb-latest{margin-top:0!important}
 .rsb-split-row--hero .sppb-addon-wrapper:has(.rsb-foc),.rsb-split-row--hero .sppb-addon-wrapper:has(.rsb-foc) *{flex:0 0 auto!important}
-@media (max-width:991px){.rsb-foc{width:auto;margin-left:0;margin-right:0;padding-top:28px;justify-content:flex-start;gap:28px}}
+@media (max-width:991px){.rsb-foc{width:auto;margin-left:0;margin-right:0;padding-top:28px;justify-content:center;gap:28px}}
 @media (prefers-reduced-motion:reduce){.rsb-foc__a img,.rsb-foc__name{transition:none}}
