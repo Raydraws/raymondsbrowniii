@@ -72,3 +72,20 @@
 .rsb-split-row--hero .sppb-addon-wrapper:has(.rsb-foc),.rsb-split-row--hero .sppb-addon-wrapper:has(.rsb-foc) *{flex:0 0 auto!important}
 @media (max-width:991px){.rsb-foc{width:auto;margin-left:0;margin-right:0;padding-top:28px;justify-content:center;gap:28px}}
 @media (prefers-reduced-motion:reduce){.rsb-foc__a img,.rsb-foc__name{transition:none}}
+/* Footer: Family of Companies logo row (module 123 "Network footer") — beige marks, From the Walk orange on hover, URL shown below */
+.rsb-footer__network:has(.rsb-ffoc){flex-direction:column;align-items:center;gap:26px;padding-top:34px}
+.rsb-footer__network:has(.rsb-ffoc) .rsb-footer__copy{margin-left:0}
+.rsb-ffoc{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:30px 52px;width:100%;padding-bottom:22px}
+.rsb-ffoc__a{position:relative;display:flex;justify-content:center;line-height:0;text-decoration:none!important}
+.rsb-ffoc__m{display:block;height:52px;background-color:#E9E4DA;-webkit-mask:var(--m) center/contain no-repeat;mask:var(--m) center/contain no-repeat;transition:background-color .3s ease}
+.rsb-ffoc__m--raydraws{width:54px;--m:url(/images/brand/foc/foc-raydraws.png?v=3)}
+.rsb-ffoc__m--artbyraybrown{width:50px;--m:url(/images/brand/foc/foc-artbyraybrown.png?v=3)}
+.rsb-ffoc__m--designbyraybrown{width:39px;--m:url(/images/brand/foc/foc-designbyraybrown.png?v=3)}
+.rsb-ffoc__m--raysbeats{width:59px;--m:url(/images/brand/foc/foc-raysbeats.png?v=3)}
+.rsb-ffoc__m--raysnjays{width:57px;--m:url(/images/brand/foc/foc-raysnjays.png?v=3)}
+.rsb-ffoc__url{position:absolute;top:100%;left:50%;margin-top:9px;transform:translateX(-50%);white-space:nowrap;font-size:12px;line-height:1.2;font-family:var(--rsb-mono,'IBM Plex Mono',monospace);color:#FF3C00;opacity:0;pointer-events:none;transition:opacity .3s ease}
+.rsb-ffoc__a:hover .rsb-ffoc__m,.rsb-ffoc__a:focus-visible .rsb-ffoc__m{background-color:#FF3C00}
+.rsb-ffoc__a:hover .rsb-ffoc__url,.rsb-ffoc__a:focus-visible .rsb-ffoc__url{opacity:1}
+.rsb-ffoc__a:focus-visible{outline:2px solid #FF3C00;outline-offset:6px;border-radius:4px}
+@media (max-width:575px){.rsb-ffoc{gap:36px 0}.rsb-ffoc__a{flex:0 0 33.333%}}
+@media (prefers-reduced-motion:reduce){.rsb-ffoc__m,.rsb-ffoc__url{transition:none}}
